@@ -3,52 +3,87 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-
-const villaCapacities: Record<string, number> = {
-  logis: 11,
-  ecole: 12,
-  mouettes: 8,
-  parour: 10,
-};
+import { computePricing } from "@/app/lib/pricing";
+import { buildBookingQuery } from "@/app/lib/bookingQuery";
 
 export default function DevisPage() {
   const searchParams = useSearchParams();
 
-  const villa = searchParams.get("villa") || "logis";
+  const villaSlug = searchParams.get("villa") || "logis";
   const arrival = searchParams.get("arrival");
   const departure = searchParams.get("departure");
-
-  const capacity = villaCapacities[villa] || 0;
 
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
-  const [pet, setPet] = useState("non");
+  const [pet, setPet] = useState<"oui" | "non">("non");
 
-  const travelersForCapacity = adults + children;
-  const capacityExceeded = travelersForCapacity > capacity;
+  const pricing = computePricing({
+    villaSlug,
+    arrival,
+    departure,
+    adults,
+    children,
+    babies,
+    pet: pet === "oui",
+  });
 
-  const nights =
-    arrival && departure
-      ? Math.max(
-          1,
-          Math.ceil(
-            (new Date(departure).getTime() - new Date(arrival).getTime()) /
-              (1000 * 60 * 60 * 24)
-          )
-        )
-      : 0;
+  const villa = pricing.villa;
+  const missingDates = !arrival || !departure;
 
-  const pricePerNight = 350;
-  const stayPrice = nights * pricePerNight;
-  const cleaningFee = 200;
-  const linenFee = (adults + children) * 20;
-  const petFee = pet === "oui" ? 100 : 0;
-  const touristTax = adults * nights * 3.3;
+  if (!villa) {
+    return (
+      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+        <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
+            Demeure introuvable
+          </h1>
+          <p className="mb-8 text-slate-600">
+            Merci de repartir de la fiche d’une de nos demeures pour choisir
+            vos dates.
+          </p>
+          <Link
+            href="/"
+            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
+          >
+            Retour à l’accueil
+          </Link>
+        </section>
+      </main>
+    );
+  }
 
-  const total = stayPrice + cleaningFee + linenFee + petFee + touristTax;
-  const deposit = total * 0.4;
-  const balance = total - deposit;
+  if (missingDates) {
+    return (
+      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+        <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
+            Choisissez d’abord vos dates
+          </h1>
+          <p className="mb-8 text-slate-600">
+            Retournez sur la fiche de « {villa.name} » et sélectionnez vos
+            dates d’arrivée et de départ pour obtenir votre devis.
+          </p>
+          <Link
+            href={villa.href}
+            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
+          >
+            Voir « {villa.name} »
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  const nextQuery = buildBookingQuery({
+    villa: villaSlug,
+    arrival: arrival ?? undefined,
+    departure: departure ?? undefined,
+    adults,
+    children,
+    babies,
+    pet,
+  });
 
   return (
     <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
@@ -56,7 +91,8 @@ export default function DevisPage() {
         <div className="mb-8 rounded-3xl bg-green-50 p-6 text-green-900">
           <p className="font-bold">Séjour disponible</p>
           <p>
-            {villa} — du {arrival} au {departure} — {nights} nuit(s)
+            {villa.name} — du {arrival} au {departure} — {pricing.nights}{" "}
+            nuit(s)
           </p>
         </div>
 
@@ -108,7 +144,7 @@ export default function DevisPage() {
                 Animal domestique
                 <select
                   value={pet}
-                  onChange={(e) => setPet(e.target.value)}
+                  onChange={(e) => setPet(e.target.value as "oui" | "non")}
                   className="mt-2 w-full rounded-xl border p-4"
                 >
                   <option value="non">Non</option>
@@ -117,12 +153,13 @@ export default function DevisPage() {
               </label>
             </div>
 
-            {capacityExceeded && (
+            {pricing.capacityExceeded && (
               <div className="mt-6 rounded-2xl bg-red-50 p-5 text-red-900">
                 <p className="font-bold">Capacité dépassée.</p>
                 <p>
-                  Cette demeure accepte au maximum {capacity} voyageurs hors
-                  bébés. Contactez le propriétaire pour étudier votre demande.
+                  Cette demeure accepte au maximum {villa.maxTravelers}{" "}
+                  voyageurs hors bébés. Contactez le propriétaire pour étudier
+                  votre demande.
                 </p>
               </div>
             )}
@@ -134,32 +171,39 @@ export default function DevisPage() {
             </h2>
 
             <div className="space-y-4 text-slate-700">
-              <p>Location : {stayPrice.toFixed(2)} €</p>
-              <p>Ménage : {cleaningFee.toFixed(2)} €</p>
-              <p>Draps & serviettes : {linenFee.toFixed(2)} €</p>
-              <p>Animal : {petFee.toFixed(2)} €</p>
-              <p>Taxe de séjour : {touristTax.toFixed(2)} €</p>
+              <p>Location : {pricing.stayPrice.toFixed(2)} €</p>
+              <p>Ménage : {pricing.cleaningFee.toFixed(2)} €</p>
+              <p>Draps & serviettes : {pricing.linenFee.toFixed(2)} €</p>
+              <p>Animal : {pricing.petFee.toFixed(2)} €</p>
+              <p>Taxe de séjour : {pricing.touristTax.toFixed(2)} €</p>
 
               <hr />
 
               <p className="text-2xl font-bold text-[#082f3a]">
-                Total : {capacityExceeded ? "—" : `${total.toFixed(2)} €`}
+                Total :{" "}
+                {pricing.capacityExceeded
+                  ? "—"
+                  : `${pricing.total.toFixed(2)} €`}
               </p>
 
               <p className="font-semibold">
                 Acompte 40 % :{" "}
-                {capacityExceeded ? "—" : `${deposit.toFixed(2)} €`}
+                {pricing.capacityExceeded
+                  ? "—"
+                  : `${pricing.deposit.toFixed(2)} €`}
               </p>
 
               <p className="font-semibold">
                 Solde à J-30 :{" "}
-                {capacityExceeded ? "—" : `${balance.toFixed(2)} €`}
+                {pricing.capacityExceeded
+                  ? "—"
+                  : `${pricing.balance.toFixed(2)} €`}
               </p>
             </div>
 
-            {!capacityExceeded ? (
+            {!pricing.capacityExceeded ? (
               <Link
-                href="/coordonnees"
+                href={`/coordonnees?${nextQuery}`}
                 className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white"
               >
                 Continuer vers mes coordonnées
