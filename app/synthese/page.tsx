@@ -2,12 +2,38 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { computePricing } from "@/app/lib/pricing";
 import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
+import { useLanguage } from "@/app/i18n/LanguageContext";
+import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
+import type { PricingPeriod } from "@/app/lib/periodPricing";
 
 export default function SynthesePage() {
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
+  const { t } = useLanguage();
+
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [periods, setPeriods] = useState<PricingPeriod[]>([]);
+
+  useEffect(() => {
+    fetch("/api/public-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) setSettings(data.settings);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch(`/api/public-pricing-periods?villa=${booking.villa}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.periods) setPeriods(data.periods);
+      })
+      .catch(() => {});
+  }, [booking.villa]);
 
   const pricing = computePricing({
     villaSlug: booking.villa,
@@ -17,7 +43,7 @@ export default function SynthesePage() {
     children: booking.children,
     babies: booking.babies,
     pet: booking.pet === "oui",
-  });
+  }, settings, periods);
 
   const villa = pricing.villa;
   const incomplete = !villa || !booking.arrival || !booking.departure || !booking.email;
@@ -27,17 +53,11 @@ export default function SynthesePage() {
       <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
         <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
           <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
-            Informations manquantes
+            {t("common.incompleteTitle")}
           </h1>
-          <p className="mb-8 text-slate-600">
-            Certaines informations de votre réservation sont manquantes.
-            Merci de reprendre le parcours depuis le début.
-          </p>
-          <Link
-            href="/"
-            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
-          >
-            Retour à l’accueil
+          <p className="mb-8 text-slate-600">{t("common.incompleteText")}</p>
+          <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
+            {t("common.backHome")}
           </Link>
         </section>
       </main>
@@ -50,57 +70,70 @@ export default function SynthesePage() {
     <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
       <section className="mx-auto max-w-4xl">
         <h1 className="mb-8 text-5xl font-bold text-[#082f3a]">
-          Synthèse de votre réservation
+          {t("synthese.title")}
         </h1>
 
         <div className="rounded-3xl bg-white p-8 shadow-xl">
-          <div className="space-y-4 text-slate-700">
-            <p>
-              <strong>Demeure :</strong> {villa.name}
-            </p>
-            <p>
-              <strong>Séjour :</strong> du {booking.arrival} au{" "}
-              {booking.departure} ({pricing.nights} nuit
-              {pricing.nights > 1 ? "s" : ""})
-            </p>
-            <p>
-              <strong>Voyageurs :</strong> {booking.adults} adulte
-              {booking.adults > 1 ? "s" : ""}, {booking.children} enfant
-              {booking.children > 1 ? "s" : ""}, {booking.babies} bébé
-              {booking.babies > 1 ? "s" : ""}
-              {booking.pet === "oui" ? ", avec animal" : ""}
-            </p>
-            <p>
-              <strong>Client :</strong> {booking.prenom} {booking.nom} —{" "}
-              {booking.email}
-            </p>
+          {pricing.needsQuote ? (
+            <div className="rounded-2xl bg-amber-50 p-6 text-amber-900">
+              <p className="mb-2 font-bold">Tarif sur demande</p>
+              <p className="mb-4">
+                Pour ces dates, merci de nous consulter afin d&apos;obtenir un tarif personnalisé :
+              </p>
+              <a href="mailto:contact@escalealacotiniere.fr" className="font-semibold underline">
+                contact@escalealacotiniere.fr
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-4 text-slate-700">
+              <p><strong>{t("synthese.villa")} :</strong> {villa.name}</p>
+              <p>
+                <strong>{t("synthese.stay")} :</strong> {booking.arrival} →{" "}
+                {booking.departure} ({pricing.nights} {t("synthese.nightsSuffix")})
+              </p>
+              <p>
+                <strong>{t("synthese.travelers")} :</strong> {booking.adults}{" "}
+                {t("synthese.adult")}{booking.adults > 1 ? "s" : ""}, {booking.children}{" "}
+                {t("synthese.child")}{booking.children > 1 ? "s" : ""}, {booking.babies}{" "}
+                {t("synthese.baby")}{booking.babies > 1 ? "s" : ""}
+                {booking.pet === "oui" ? t("synthese.withAnimal") : ""}
+              </p>
+              <p>
+                <strong>{t("synthese.client")} :</strong> {booking.prenom}{" "}
+                {booking.nom} — {booking.email}
+              </p>
 
-            <hr />
+              <hr />
 
-            <p className="text-2xl font-bold text-[#082f3a]">
-              <strong>Total :</strong> {pricing.total.toFixed(2)} €
-            </p>
-            <p>
-              <strong>Acompte à régler maintenant :</strong>{" "}
-              {pricing.deposit.toFixed(2)} €
-            </p>
-            <p>
-              <strong>Solde à régler à J-30 :</strong>{" "}
-              {pricing.balance.toFixed(2)} €
-            </p>
-          </div>
+              {pricing.weeklyDiscount > 0 && (
+                <p className="text-green-700">
+                  Remise semaine incluse : −{pricing.weeklyDiscount.toFixed(2)} €
+                </p>
+              )}
+              <p className="text-2xl font-bold text-[#082f3a]">
+                <strong>{t("synthese.total")} :</strong> {pricing.total.toFixed(2)} €
+              </p>
+              <p><strong>{t("synthese.depositNow")} :</strong> {pricing.deposit.toFixed(2)} €</p>
+              <p><strong>{t("synthese.balance")} :</strong> {pricing.balance.toFixed(2)} €</p>
+              <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                {t("synthese.touristTaxNote", { amount: pricing.touristTax.toFixed(2) })}
+              </p>
+            </div>
+          )}
 
           <div className="mt-8 rounded-2xl bg-[#f7f1e8] p-6 text-sm text-slate-700">
-            En cliquant sur le bouton ci-dessous, vous serez dirigé vers le
-            paiement sécurisé de l’acompte.
+            {t("synthese.payNote")}
           </div>
 
-          <Link
-            href={`/paiement?${nextQuery}`}
-            className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white"
-          >
-            Aller vers le paiement sécurisé
-          </Link>
+          {pricing.needsQuote ? (
+            <button disabled className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white opacity-40">
+              {t("synthese.continue")}
+            </button>
+          ) : (
+            <Link href={`/paiement?${nextQuery}`} className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white">
+              {t("synthese.continue")}
+            </Link>
+          )}
         </div>
       </section>
     </main>

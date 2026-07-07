@@ -5,9 +5,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { amount, villaName, description, clientEmail, forwardQuery } = body as {
+  const { amount, productName, description, clientEmail, forwardQuery } = body as {
     amount: number;
-    villaName: string;
+    productName: string;
     description: string;
     clientEmail?: string;
     forwardQuery: string;
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         price_data: {
           currency: "eur",
           product_data: {
-            name: `Acompte réservation - ${villaName}`,
+            name: productName,
             description,
           },
           unit_amount: amount,

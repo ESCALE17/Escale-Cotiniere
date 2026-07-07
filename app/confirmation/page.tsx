@@ -1,6 +1,10 @@
-import Link from "next/link";
 import Stripe from "stripe";
 import { computePricing } from "@/app/lib/pricing";
+import { sendBookingConfirmationEmail } from "@/app/lib/email";
+import { saveReservation } from "@/app/lib/reservations";
+import { getSettings } from "@/app/lib/getSettings";
+import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import ConfirmationView from "./ConfirmationView";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -21,27 +25,7 @@ export default async function ConfirmationPage({
   const sessionId = getParam(params, "session_id");
 
   if (!sessionId) {
-    return (
-      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
-        <section className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
-          <h1 className="mb-6 text-4xl font-bold text-[#082f3a]">
-            Aucune confirmation trouvée
-          </h1>
-          <p className="mb-8 text-lg text-slate-700">
-            Nous n’avons pas retrouvé de paiement associé à cette page. Si
-            vous venez de régler un acompte et que vous voyez ce message,
-            contactez-nous directement — votre paiement peut malgré tout avoir
-            été enregistré chez Stripe.
-          </p>
-          <Link
-            href="/"
-            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
-          >
-            Retour à l’accueil
-          </Link>
-        </section>
-      </main>
-    );
+    return <ConfirmationView state="no-session" />;
   }
 
   let session: Stripe.Checkout.Session | null = null;
@@ -57,29 +41,11 @@ export default async function ConfirmationPage({
 
   if (fetchError || !session || !paid) {
     return (
-      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
-        <section className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
-          <h1 className="mb-6 text-4xl font-bold text-[#082f3a]">
-            Paiement non confirmé
-          </h1>
-          <p className="mb-8 text-lg text-slate-700">
-            {fetchError
-              ? "Nous n’avons pas pu vérifier ce paiement pour le moment."
-              : "Ce paiement n’a pas encore été validé (annulé ou toujours en attente)."}{" "}
-            Si vous pensez qu’il s’agit d’une erreur, contactez-nous en
-            précisant la référence ci-dessous.
-          </p>
-          <p className="mb-8 rounded-xl bg-[#f7f1e8] p-4 font-mono text-sm text-slate-600">
-            Référence : {sessionId}
-          </p>
-          <Link
-            href="/"
-            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
-          >
-            Retour à l’accueil
-          </Link>
-        </section>
-      </main>
+      <ConfirmationView
+        state="not-paid"
+        fetchError={fetchError}
+        sessionId={sessionId}
+      />
     );
   }
 
@@ -92,8 +58,50 @@ export default async function ConfirmationPage({
   const pet = getParam(params, "pet");
   const nom = getParam(params, "nom");
   const prenom = getParam(params, "prenom");
+  const email = getParam(params, "email");
+  const telephone = getParam(params, "telephone");
+  const adresse = getParam(params, "adresse");
+  const codePostal = getParam(params, "codePostal");
+  const ville = getParam(params, "ville");
+  const pays = getParam(params, "pays");
+  const lang = getParam(params, "lang") || "fr";
 
-  const pricing = computePricing({
+  const clientAddress = [adresse, [codePostal, ville].filter(Boolean).join(" "), pays]
+    .filter(Boolean)
+    .join(", ");
+
+  // Lit les paramètres ET les périodes tarifaires de la villa depuis la base
+  const appSettings = await getSettings();
+
+  const { data: periodsData } = await supabaseAdmin
+    .from("pricing_periods")
+    .select("start_date, end_date, price_per_night, weekly_discount_percent")
+    .eq("villa_slug", villaSlug)
+    .order("start_date", { ascending: true });
+
+  const periods = periodsData ?? [];
+
+  const pricing = computePricing(
+    {
+      villaSlug,
+      arrival,
+      departure,
+      adults,
+      children,
+      babies,
+      pet: pet === "oui",
+    },
+    appSettings,
+    periods
+  );
+
+  const amountPaid = (session.amount_total ?? 0) / 100;
+  const clientName = `${prenom} ${nom}`.trim() || "Client";
+
+  // Enregistre la réservation en base (anti-doublon via l'id de session Stripe).
+  // Bloque aussi automatiquement les dates du séjour dans le calendrier.
+  await saveReservation({
+    stripeSessionId: sessionId,
     villaSlug,
     arrival,
     departure,
@@ -101,52 +109,94 @@ export default async function ConfirmationPage({
     children,
     babies,
     pet: pet === "oui",
+    clientName,
+    clientEmail: email,
+    clientPhone: telephone,
+    clientAddress,
+    total: pricing.total,
+    deposit: pricing.deposit,
+    balance: pricing.balance,
+    amountPaid,
+    touristTax: pricing.touristTax,
+    lang,
   });
 
-  const amountPaid = (session.amount_total ?? 0) / 100;
-  const clientName = `${prenom} ${nom}`.trim() || "Client";
+  const contractUrl = "/api/contract?villa=" + encodeURIComponent(villaSlug) +
+    "&client=" + encodeURIComponent(clientName) +
+    "&address=" + encodeURIComponent(clientAddress) +
+    "&phone=" + encodeURIComponent(telephone) +
+    "&arrival=" + encodeURIComponent(arrival) +
+    "&departure=" + encodeURIComponent(departure) +
+    "&total=" + pricing.total +
+    "&deposit=" + pricing.deposit +
+    "&nights=" + pricing.nights +
+    "&pricePerNight=" + pricing.pricePerNight +
+    "&stayPrice=" + pricing.stayPrice +
+    "&cleaningFee=" + pricing.cleaningFee +
+    "&linenFee=" + pricing.linenFee +
+    "&petFee=" + pricing.petFee +
+    "&touristTax=" + pricing.touristTax +
+    "&lang=" + lang;
 
-  const contractUrl = `/api/contract?villa=${encodeURIComponent(
-    villaSlug
-  )}&client=${encodeURIComponent(clientName)}&arrival=${encodeURIComponent(
-    arrival
-  )}&departure=${encodeURIComponent(departure)}&total=${pricing.total}&deposit=${pricing.deposit}`;
+  let emailSent = false;
+  const alreadySent = session.metadata?.email_sent === "true";
+
+  if (alreadySent) {
+    emailSent = true;
+  } else if (email) {
+    const emailResult = await sendBookingConfirmationEmail({
+      villaName: pricing.villa?.name ?? villaSlug,
+      villaSlug: villaSlug,
+      arrival: arrival,
+      departure: departure,
+      nights: pricing.nights,
+      pricePerNight: pricing.pricePerNight,
+      stayPrice: pricing.stayPrice,
+      cleaningFee: pricing.cleaningFee,
+      linenFee: pricing.linenFee,
+      petFee: pricing.petFee,
+      touristTax: pricing.touristTax,
+      adults: adults,
+      children: children,
+      babies: babies,
+      clientName: clientName,
+      clientEmail: email,
+      clientAddress: clientAddress,
+      clientPhone: telephone,
+      total: pricing.total,
+      deposit: pricing.deposit,
+      balance: pricing.balance,
+      amountPaid: amountPaid,
+      locale: lang,
+    });
+
+    emailSent = emailResult.sent;
+
+    if (emailSent) {
+      try {
+        await stripe.checkout.sessions.update(sessionId, {
+          metadata: { ...session.metadata, email_sent: "true" },
+        });
+      } catch (error) {
+        console.error("Impossible de marquer la session comme mail envoyé :", error);
+      }
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
-      <section className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
-        <h1 className="mb-6 text-5xl font-bold text-[#082f3a]">
-          Paiement confirmé
-        </h1>
-
-        <p className="mb-8 text-lg text-slate-700">
-          Merci {prenom || ""}, votre acompte de{" "}
-          <strong>{amountPaid.toFixed(2)} €</strong> a bien été enregistré
-          pour « {pricing.villa?.name ?? villaSlug} ».
-        </p>
-
-        <div className="mb-8 space-y-3 rounded-2xl bg-[#f7f1e8] p-6 text-slate-700">
-          <p>
-            <strong>Séjour :</strong> du {arrival} au {departure}
-          </p>
-          <p>
-            <strong>Total du séjour :</strong> {pricing.total.toFixed(2)} €
-          </p>
-          <p>
-            <strong>Solde restant, à régler à J-30 :</strong>{" "}
-            {pricing.balance.toFixed(2)} €
-          </p>
-        </div>
-
-        <a
-          href={contractUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
-        >
-          Télécharger mon contrat de location (PDF)
-        </a>
-      </section>
-    </main>
+    <ConfirmationView
+      state="paid"
+      prenom={prenom}
+      amountPaid={amountPaid}
+      villaName={pricing.villa?.name ?? villaSlug}
+      arrival={arrival}
+      departure={departure}
+      total={pricing.total}
+      balance={pricing.balance}
+      touristTax={pricing.touristTax}
+      emailSent={emailSent}
+      email={email}
+      contractUrl={contractUrl}
+    />
   );
 }

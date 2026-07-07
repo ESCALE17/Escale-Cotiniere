@@ -1,29 +1,74 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { DayPicker, DateRange } from "react-day-picker";
 import { fr } from "date-fns/locale/fr";
+import { enUS } from "date-fns/locale/en-US";
+import { de } from "date-fns/locale/de";
+import { es } from "date-fns/locale/es";
 import "react-day-picker/dist/style.css";
+import { useLanguage } from "@/app/i18n/LanguageContext";
+import {
+  type BlockedPeriod,
+  toDateString,
+  rangeOverlapsBlocked,
+  expandBlockedDates,
+} from "@/app/lib/availability";
+
+const calendarLocales = { fr, en: enUS, de, es };
 
 export default function BookingBox({ villaSlug }: { villaSlug: string }) {
+  const { locale, t } = useLanguage();
   const [range, setRange] = useState<DateRange | undefined>();
   const [checked, setChecked] = useState(false);
+
+  const [blocked, setBlocked] = useState<BlockedPeriod[]>([]);
+  const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Charge les périodes bloquées de la villa au chargement de la page
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    fetch(`/api/availability?villa=${villaSlug}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!active) return;
+        const periods: BlockedPeriod[] = data.blocked ?? [];
+        setBlocked(periods);
+        setBlockedDates(expandBlockedDates(periods));
+      })
+      .catch(() => {
+        if (active) setBlocked([]);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [villaSlug]);
 
   const arrival = range?.from;
   const departure = range?.to;
   const canCheck = Boolean(arrival && departure);
 
   const isAvailable =
-    canCheck && arrival?.toISOString().slice(0, 10) !== "2026-08-10";
+    canCheck &&
+    !rangeOverlapsBlocked(
+      toDateString(arrival!),
+      toDateString(departure!),
+      blocked
+    );
 
-  const arrivalParam = arrival?.toISOString().slice(0, 10);
-  const departureParam = departure?.toISOString().slice(0, 10);
+  const arrivalParam = arrival ? toDateString(arrival) : undefined;
+  const departureParam = departure ? toDateString(departure) : undefined;
 
   return (
     <div className="rounded-3xl bg-white p-8 shadow-xl">
       <h2 className="mb-6 text-3xl font-bold text-[#082f3a]">
-        Vérifier les disponibilités
+        {t("booking.checkAvailability")}
       </h2>
 
       <div className="rounded-3xl border border-[#eadfce] bg-[#fbf7f0] p-6">
@@ -34,9 +79,9 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
             setRange(value);
             setChecked(false);
           }}
-          locale={fr}
+          locale={calendarLocales[locale]}
           numberOfMonths={2}
-          disabled={{ before: new Date() }}
+          disabled={[{ before: new Date() }, ...blockedDates]}
           classNames={{
             months: "flex flex-col gap-8 md:flex-row",
             month: "space-y-4",
@@ -57,30 +102,29 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
 
       <button
         type="button"
-        disabled={!canCheck}
+        disabled={!canCheck || loading}
         onClick={() => setChecked(true)}
         className="mt-6 rounded-full bg-[#082f3a] px-8 py-4 text-white transition hover:bg-[#0d4757] disabled:cursor-not-allowed disabled:opacity-40"
       >
-        Vérifier disponible
+        {t("booking.checkButton")}
       </button>
 
       {checked && isAvailable && (
         <div className="mt-8 rounded-2xl bg-green-50 p-6 text-green-900">
-          <p className="mb-4 font-bold">Séjour disponible.</p>
-
+          <p className="mb-4 font-bold">{t("booking.available")}</p>
           <Link
-            href={`/devis?villa=${villaSlug}&arrival=${arrivalParam}&departure=${departureParam}`}
+            href={`/devis?villa=${villaSlug}&arrival=${arrivalParam}&departure=${departureParam}&lang=${locale}`}
             className="inline-block rounded-full bg-[#082f3a] px-6 py-3 text-white"
           >
-            Continuer vers le devis
+            {t("booking.continueToQuote")}
           </Link>
         </div>
       )}
 
       {checked && !isAvailable && (
         <div className="mt-8 rounded-2xl bg-red-50 p-6 text-red-900">
-          <p className="font-bold">Cette période n’est pas disponible.</p>
-          <p className="mt-2">Choisissez d’autres dates dans le calendrier.</p>
+          <p className="font-bold">{t("booking.notAvailable")}</p>
+          <p className="mt-2">{t("booking.chooseOtherDates")}</p>
         </div>
       )}
     </div>

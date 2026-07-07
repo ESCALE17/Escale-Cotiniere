@@ -6,6 +6,7 @@ export type BookingQueryState = {
   children?: number | string;
   babies?: number | string;
   pet?: string;
+  lang?: string;
   nom?: string;
   prenom?: string;
   email?: string;
@@ -48,6 +49,7 @@ export function readBookingQuery(searchParams: URLSearchParams): Required<
   adults: number;
   children: number;
   babies: number;
+  lang: string;
   nom: string;
   prenom: string;
   email: string;
@@ -66,6 +68,7 @@ export function readBookingQuery(searchParams: URLSearchParams): Required<
     children: Number(searchParams.get("children") ?? 0),
     babies: Number(searchParams.get("babies") ?? 0),
     pet: searchParams.get("pet") ?? "non",
+    lang: searchParams.get("lang") ?? "fr",
     nom: searchParams.get("nom") ?? "",
     prenom: searchParams.get("prenom") ?? "",
     email: searchParams.get("email") ?? "",

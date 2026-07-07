@@ -1,16 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { computePricing } from "@/app/lib/pricing";
 import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
+import { useLanguage } from "@/app/i18n/LanguageContext";
+import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
+import type { PricingPeriod } from "@/app/lib/periodPricing";
 
 export default function PaiementPage() {
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings);
+  const [periods, setPeriods] = useState<PricingPeriod[]>([]);
+
+  useEffect(() => {
+    fetch("/api/public-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) setSettings(data.settings);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch(`/api/public-pricing-periods?villa=${booking.villa}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.periods) setPeriods(data.periods);
+      })
+      .catch(() => {});
+  }, [booking.villa]);
 
   const pricing = computePricing({
     villaSlug: booking.villa,
@@ -20,7 +44,7 @@ export default function PaiementPage() {
     children: booking.children,
     babies: booking.babies,
     pet: booking.pet === "oui",
-  });
+  }, settings, periods);
 
   const villa = pricing.villa;
   const incomplete = !villa || !booking.arrival || !booking.departure || !booking.email;
@@ -38,8 +62,12 @@ export default function PaiementPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: Math.round(pricing.deposit * 100), // en centimes
-          villaName: villa.name,
-          description: `Acompte réservation — ${villa.name} du ${booking.arrival} au ${booking.departure}`,
+          productName: `${t("paiement.productNamePrefix")} - ${villa.name}`,
+          description: t("paiement.checkoutDescription", {
+            villa: villa.name,
+            arrival: booking.arrival,
+            departure: booking.departure,
+          }),
           clientEmail: booking.email,
           forwardQuery,
         }),
@@ -50,14 +78,10 @@ export default function PaiementPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        setError(
-          "Le paiement n’a pas pu être initié. Merci de réessayer dans quelques instants."
-        );
+        setError(t("paiement.errorInit"));
       }
     } catch {
-      setError(
-        "Une erreur est survenue lors de la connexion au paiement sécurisé."
-      );
+      setError(t("paiement.errorConnect"));
     } finally {
       setLoading(false);
     }
@@ -68,17 +92,27 @@ export default function PaiementPage() {
       <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
         <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
           <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
-            Informations manquantes
+            {t("common.incompleteTitle")}
           </h1>
+          <p className="mb-8 text-slate-600">{t("common.incompleteText")}</p>
+          <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
+            {t("common.backHome")}
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  if (pricing.needsQuote) {
+    return (
+      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+        <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">Tarif sur demande</h1>
           <p className="mb-8 text-slate-600">
-            Certaines informations de votre réservation sont manquantes.
-            Merci de reprendre le parcours depuis le début.
+            Pour ces dates, merci de nous consulter : contact@escalealacotiniere.fr
           </p>
-          <Link
-            href="/"
-            className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white"
-          >
-            Retour à l’accueil
+          <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
+            {t("common.backHome")}
           </Link>
         </section>
       </main>
@@ -89,13 +123,12 @@ export default function PaiementPage() {
     <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
       <section className="mx-auto max-w-4xl">
         <h1 className="mb-8 text-5xl font-bold text-[#082f3a]">
-          Paiement sécurisé
+          {t("paiement.title")}
         </h1>
 
         <div className="rounded-3xl bg-white p-10 shadow-xl">
           <p className="mb-2 text-lg text-slate-700">
-            Vous allez être redirigé vers Stripe pour régler l’acompte de
-            votre séjour à « {villa.name} ».
+            {t("paiement.redirectText", { villa: villa.name })}
           </p>
           <p className="mb-6 text-3xl font-bold text-[#082f3a]">
             {pricing.deposit.toFixed(2)} €
@@ -112,7 +145,7 @@ export default function PaiementPage() {
             disabled={loading}
             className="w-full rounded-full bg-[#082f3a] px-8 py-5 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "Redirection en cours..." : "Payer mon acompte sécurisé"}
+            {loading ? t("paiement.loading") : t("paiement.payButton")}
           </button>
         </div>
       </section>
