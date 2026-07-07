@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLanguage } from "@/app/i18n/LanguageContext";
 import { translations } from "@/app/i18n/translations";
+export const dynamic = "force-dynamic";
 
 export default function ConditionsGeneralesPage() {
   const { locale, t } = useLanguage();
