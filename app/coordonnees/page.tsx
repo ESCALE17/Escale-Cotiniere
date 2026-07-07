@@ -1,6 +1,5 @@
-import { Suspense } from "react";
 "use client";
-
+import { Suspense } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -8,7 +7,7 @@ import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
 import { useLanguage } from "@/app/i18n/LanguageContext";
 export const dynamic = "force-dynamic";
 
-export Content function CoordonneesPageContent() {
+function CoordonneesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
