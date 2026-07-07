@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
 import type { PricingPeriod } from "@/app/lib/periodPricing";
 export const dynamic = "force-dynamic";
 
-export default function SynthesePage() {
+function SynthesePageContent() {
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
   const { t } = useLanguage();
@@ -138,5 +139,11 @@ export default function SynthesePage() {
         </div>
       </section>
     </main>
+  );
+export default function SynthesePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
+      <SynthesePageContent />
+    </Suspense>
   );
 }

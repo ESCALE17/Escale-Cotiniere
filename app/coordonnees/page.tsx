@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import { useState } from "react";
@@ -7,7 +8,7 @@ import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
 import { useLanguage } from "@/app/i18n/LanguageContext";
 export const dynamic = "force-dynamic";
 
-export default function CoordonneesPage() {
+export Content function CoordonneesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
@@ -189,5 +190,11 @@ export default function CoordonneesPage() {
         </div>
       </section>
     </main>
+  );
+}export default function CoordonneesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
+      <CoordonneesPageContent />
+    </Suspense>
   );
 }

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import { useState, useEffect } from "react";
@@ -10,7 +11,7 @@ import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
 import type { PricingPeriod } from "@/app/lib/periodPricing";
 export const dynamic = "force-dynamic";
 
-export default function PaiementPage() {
+function PaiementPageContent() {
   const searchParams = useSearchParams();
   const booking = readBookingQuery(searchParams);
   const { t } = useLanguage();
@@ -151,5 +152,11 @@ export default function PaiementPage() {
         </div>
       </section>
     </main>
+  );
+}export default function PaiementPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
+      <PaiementPageContent />
+    </Suspense>
   );
 }

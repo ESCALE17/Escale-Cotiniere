@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 "use client";
 
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
 import type { PricingPeriod } from "@/app/lib/periodPricing";
 export const dynamic = "force-dynamic";
 
-export default function DevisPage() {
+function DevisPageContent() {
   const searchParams = useSearchParams();
   const { t, locale } = useLanguage();
 
@@ -215,5 +216,11 @@ export default function DevisPage() {
         </div>
       </section>
     </main>
+  );
+}export default function DevisPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
+      <DevisPageContent />
+    </Suspense>
   );
 }
