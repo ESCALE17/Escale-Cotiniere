@@ -8,6 +8,7 @@ import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
 import { useLanguage } from "@/app/i18n/LanguageContext";
 import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
 import type { PricingPeriod } from "@/app/lib/periodPricing";
+export const dynamic = "force-dynamic";
 
 export default function PaiementPage() {
   const searchParams = useSearchParams();

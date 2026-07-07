@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildBookingQuery, readBookingQuery } from "@/app/lib/bookingQuery";
 import { useLanguage } from "@/app/i18n/LanguageContext";
+export const dynamic = "force-dynamic";
 
 export default function CoordonneesPage() {
   const router = useRouter();
