@@ -139,6 +139,8 @@ function SynthesePageContent() {
       </section>
     </main>
   );
+}
+
 export default function SynthesePage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
