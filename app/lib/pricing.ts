@@ -88,8 +88,10 @@ export function computePricing(
         ? Math.round((stay.stayPriceBeforeDiscount / stay.nights) * 100) / 100
         : 0;
   } else {
-    // Filet de sécurité : tarif de base de la villa
-    stayPrice = nights * pricePerNight;
+    // Aucune période tarifaire définie pour ces dates : "nous consulter".
+    needsQuote = true;
+    stayPrice = 0;
+    pricePerNight = 0;
   }
 
   const cleaningFee = nights > 0 ? settings.cleaningFee : 0;

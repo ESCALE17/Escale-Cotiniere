@@ -38,6 +38,10 @@ function CoordonneesPageContent() {
     if (!form.prenom.trim()) newErrors.push(t("coord.errPrenom"));
     if (!/^\S+@\S+\.\S+$/.test(form.email)) newErrors.push(t("coord.errEmail"));
     if (!form.telephone.trim()) newErrors.push(t("coord.errTelephone"));
+    if (!form.adresse.trim()) newErrors.push("L'adresse est obligatoire.");
+    if (!form.codePostal.trim()) newErrors.push("Le code postal est obligatoire.");
+    if (!form.ville.trim()) newErrors.push("La ville est obligatoire.");
+    if (!form.pays.trim()) newErrors.push("Le pays est obligatoire.");
     if (!accepte) newErrors.push(t("coord.errCgl"));
 
     setErrors(newErrors);
