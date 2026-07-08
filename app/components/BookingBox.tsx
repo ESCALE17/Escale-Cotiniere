@@ -15,6 +15,7 @@ import {
   rangeOverlapsBlocked,
   expandBlockedDates,
 } from "@/app/lib/availability";
+import { checkStayRules, type PricingPeriod } from "@/app/lib/periodPricing";
 
 const calendarLocales = { fr, en: enUS, de, es };
 
@@ -25,9 +26,9 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
 
   const [blocked, setBlocked] = useState<BlockedPeriod[]>([]);
   const [blockedDates, setBlockedDates] = useState<Date[]>([]);
+  const [periods, setPeriods] = useState<PricingPeriod[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Charge les périodes bloquées de la villa au chargement de la page
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -35,9 +36,9 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
       .then((res) => res.json())
       .then((data) => {
         if (!active) return;
-        const periods: BlockedPeriod[] = data.blocked ?? [];
-        setBlocked(periods);
-        setBlockedDates(expandBlockedDates(periods));
+        const p: BlockedPeriod[] = data.blocked ?? [];
+        setBlocked(p);
+        setBlockedDates(expandBlockedDates(p));
       })
       .catch(() => {
         if (active) setBlocked([]);
@@ -50,9 +51,21 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
     };
   }, [villaSlug]);
 
+  useEffect(() => {
+    fetch(`/api/public-pricing-periods?villa=${villaSlug}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.periods) setPeriods(data.periods);
+      })
+      .catch(() => {});
+  }, [villaSlug]);
+
   const arrival = range?.from;
   const departure = range?.to;
   const canCheck = Boolean(arrival && departure);
+
+  const arrivalParam = arrival ? toDateString(arrival) : undefined;
+  const departureParam = departure ? toDateString(departure) : undefined;
 
   const isAvailable =
     canCheck &&
@@ -62,8 +75,11 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
       blocked
     );
 
-  const arrivalParam = arrival ? toDateString(arrival) : undefined;
-  const departureParam = departure ? toDateString(departure) : undefined;
+  const rulesCheck =
+    canCheck && arrivalParam && departureParam
+      ? checkStayRules(arrivalParam, departureParam, periods)
+      : { ok: true };
+  const rulesOk = rulesCheck.ok;
 
   return (
     <div className="rounded-3xl bg-white p-8 shadow-xl">
@@ -82,6 +98,10 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
           locale={calendarLocales[locale]}
           numberOfMonths={2}
           disabled={[{ before: new Date() }, ...blockedDates]}
+          modifiers={{ booked: blockedDates }}
+          modifiersClassNames={{
+            booked: "bg-red-100 text-red-400 line-through",
+          }}
           classNames={{
             months: "flex flex-col gap-8 md:flex-row",
             month: "space-y-4",
@@ -94,10 +114,26 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
             day_range_start: "bg-[#082f3a] text-white",
             day_range_end: "bg-[#082f3a] text-white",
             day_range_middle: "bg-[#d8b66a]/40 text-[#082f3a]",
-            day_disabled: "text-gray-300 line-through",
+            day_disabled: "text-gray-300",
             day_today: "border border-[#c99b4a]",
           }}
         />
+
+        {/* Légende */}
+        <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-[#eadfce] pt-4 text-sm text-[#082f3a]">
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 rounded-full bg-white border border-[#eadfce]" />
+            {t("booking.legendAvailable")}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 rounded-full bg-red-100 border border-red-200" />
+            {t("booking.legendBooked")}
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="inline-block h-4 w-4 rounded-full bg-[#082f3a]" />
+            {t("booking.legendSelected")}
+          </span>
+        </div>
       </div>
 
       <button
@@ -109,7 +145,14 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
         {t("booking.checkButton")}
       </button>
 
-      {checked && isAvailable && (
+      {checked && isAvailable && !rulesOk && (
+        <div className="mt-8 rounded-2xl bg-orange-50 p-6 text-orange-900">
+          <p className="font-bold">Dates non conformes</p>
+          <p className="mt-2">{rulesCheck.message}</p>
+        </div>
+      )}
+
+      {checked && isAvailable && rulesOk && (
         <div className="mt-8 rounded-2xl bg-green-50 p-6 text-green-900">
           <p className="mb-4 font-bold">{t("booking.available")}</p>
           <Link

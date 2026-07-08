@@ -216,7 +216,8 @@ function DevisPageContent() {
       </section>
     </main>
   );
-}export default function DevisPage() {
+}
+export default function DevisPage() {
   return (
     <Suspense fallback={<div className="min-h-screen bg-[#f7f1e8]" />}>
       <DevisPageContent />

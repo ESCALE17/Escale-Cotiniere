@@ -288,6 +288,9 @@ export const translations = {
       continueToQuote: "Continuer vers le devis",
       notAvailable: "Cette période n'est pas disponible.",
       chooseOtherDates: "Choisissez d'autres dates dans le calendrier.",
+      legendAvailable: "Disponible",
+      legendBooked: "Réservé",
+      legendSelected: "Sélectionné",
     },
     common: {
       backHome: "Retour à l'accueil",
@@ -470,6 +473,9 @@ export const translations = {
       continueToQuote: "Continue to quote",
       notAvailable: "This period is not available.",
       chooseOtherDates: "Please choose other dates in the calendar.",
+      legendAvailable: "Disponible",
+      legendBooked: "Réservé",
+      legendSelected: "Sélectionné",
     },
     common: {
       backHome: "Back to home",
@@ -652,6 +658,9 @@ export const translations = {
       continueToQuote: "Weiter zum Angebot",
       notAvailable: "Dieser Zeitraum ist nicht verfügbar.",
       chooseOtherDates: "Bitte wählen Sie andere Daten im Kalender.",
+      legendAvailable: "Disponible",
+      legendBooked: "Réservé",
+      legendSelected: "Sélectionné",
     },
     common: {
       backHome: "Zurück zur Startseite",
@@ -835,6 +844,9 @@ export const translations = {
       continueToQuote: "Continuar al presupuesto",
       notAvailable: "Este período no está disponible.",
       chooseOtherDates: "Elija otras fechas en el calendario.",
+      legendAvailable: "Disponible",
+      legendBooked: "Réservé",
+      legendSelected: "Sélectionné",
     },
     common: {
       backHome: "Volver al inicio",
