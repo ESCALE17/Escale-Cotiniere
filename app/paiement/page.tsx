@@ -108,9 +108,9 @@ function PaiementPageContent() {
     return (
       <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
         <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
-          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">Tarif sur demande</h1>
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">{t("devis.quoteTitle")}</h1>
           <p className="mb-8 text-slate-600">
-            Pour ces dates, merci de nous consulter : contact@escalealacotiniere.fr
+            {t("devis.quoteText")} contact@escalealacotiniere.fr
           </p>
           <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
             {t("common.backHome")}

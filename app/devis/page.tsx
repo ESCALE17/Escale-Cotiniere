@@ -162,10 +162,8 @@ function DevisPageContent() {
 
             {pricing.needsQuote ? (
               <div className="rounded-2xl bg-amber-50 p-6 text-amber-900">
-                <p className="mb-2 font-bold">Tarif sur demande</p>
-                <p className="mb-4">
-                  Pour ces dates, merci de nous consulter afin d&apos;obtenir un tarif personnalise :
-                </p>
+                <p className="mb-2 font-bold">{t("devis.quoteTitle")}</p>
+                <p className="mb-4">{t("devis.quoteText")}</p>
                 <a href="mailto:contact@escalealacotiniere.fr" className="font-semibold underline">
                   contact@escalealacotiniere.fr
                 </a>
