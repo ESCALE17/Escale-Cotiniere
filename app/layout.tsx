@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     "villa piscine Oléron",
     "séjour île d'Oléron",
   ],
+  verification: {
+    google: "DuuBQMGgpOgq2fQDu6kluLmtM8SGQ1fW9f-U3JqSdrQ",
+  },
   openGraph: {
     title: "Escale à La Cotinière — Villas de charme à Oléron",
     description:
