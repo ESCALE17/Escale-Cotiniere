@@ -211,3 +211,55 @@ export async function sendBookingConfirmationEmail(
     return { sent: false, reason: "send_error" as const };
   }
 }
+/**
+ * Envoie une alerte au propriétaire (contact@escalealacotiniere.fr)
+ * à chaque nouvelle réservation payée.
+ */
+export async function sendOwnerNotificationEmail(
+  params: BookingConfirmationEmailParams
+): Promise<{ sent: boolean; reason?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour l'alerte propriétaire.");
+    return { sent: false, reason: "no_api_key" };
+  }
+
+  const resend = new Resend(apiKey);
+
+  const petText = params.petFee > 0 ? "oui" : "non";
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #082f3a;">
+      <h2 style="color: #082f3a;">🔔 Nouvelle réservation</h2>
+      <p style="font-size: 16px;">Une réservation vient d'être payée sur le site.</p>
+
+      <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Villa</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.villaName}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Séjour</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.arrival} → ${params.departure} (${params.nights} nuit(s))</td></tr>
+                 tyle="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Voyageurs</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.adults} adulte(s), ${params.children} enfant(s), ${params.babies} bébé(s) — animal : ${petText}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Client</strong></td><td style="padding: 8px; border-bottom: 1px        <tr><td style="padding: 8px; border-bott        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Email</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientEmail}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Téléphone</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientPhone ?? "—"}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #ea        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #ea        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; 8px; text-align: right;">${params.total.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px;"><strong>Acompte payé</strong></td><td style="padding: 8px; text-align: right; color: #15803d;">${params.amountPaid.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px;"><strong>Solde restant</strong></td><td style="padding: 8px; text-align: right;">${params.balance.toFixed(2)} €</td></tr>
+      </table>
+
+      <p style="margin-top: 20px; font-size: 14px; color: #8a755d;">
+        Retrouvez le détail dans votre espace d'administration.
+      </p>
+    </div>
+  `;
+
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Nouvelle réservation — ${params.villaName} (${params.arrival} → ${params.departure})`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Échec de l'envoi de l'alerte propriétaire :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}

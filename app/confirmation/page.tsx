@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import { computePricing } from "@/app/lib/pricing";
-import { sendBookingConfirmationEmail } from "@/app/lib/email";
+import { sendBookingConfirmationEmail, sendOwnerNotificationEmail } from "@/app/lib/email";
 import { saveReservation } from "@/app/lib/reservations";
 import { getSettings } from "@/app/lib/getSettings";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
@@ -171,6 +171,31 @@ export default async function ConfirmationPage({
     });
 
     emailSent = emailResult.sent;
+    await sendOwnerNotificationEmail({
+      villaName: pricing.villa?.name ?? villaSlug,
+      villaSlug: villaSlug,
+      arrival: arrival,
+      departure: departure,
+      nights: pricing.nights,
+      pricePerNight: pricing.pricePerNight,
+      stayPrice: pricing.stayPrice,
+      cleaningFee: pricing.cleaningFee,
+      linenFee: pricing.linenFee,
+      petFee: pricing.petFee,
+      touristTax: pricing.touristTax,
+      adults: adults,
+      children: children,
+      babies: babies,
+      clientName: clientName,
+      clientEmail: email,
+      clientAddress: clientAddress,
+      clientPhone: telephone,
+      total: pricing.total,
+      deposit: pricing.deposit,
+      balance: pricing.balance,
+      amountPaid: amountPaid,
+      locale: lang,
+    });
 
     if (emailSent) {
       try {
