@@ -211,6 +211,7 @@ export async function sendBookingConfirmationEmail(
     return { sent: false, reason: "send_error" as const };
   }
 }
+
 /**
  * Envoie une alerte au propriétaire (contact@escalealacotiniere.fr)
  * à chaque nouvelle réservation payée.
@@ -226,7 +227,7 @@ export async function sendOwnerNotificationEmail(
 
   const resend = new Resend(apiKey);
 
-  const petText = params.petFee > 0 ? "oui" : "non";
+  const petText = params.petFee && params.petFee > 0 ? "oui" : "non";
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #082f3a;">
@@ -236,10 +237,12 @@ export async function sendOwnerNotificationEmail(
       <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Villa</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.villaName}</td></tr>
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Séjour</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.arrival} → ${params.departure} (${params.nights} nuit(s))</td></tr>
-                 tyle="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Voyageurs</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.adults} adulte(s), ${params.children} enfant(s), ${params.babies} bébé(s) — animal : ${petText}</td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Client</strong></td><td style="padding: 8px; border-bottom: 1px        <tr><td style="padding: 8px; border-bott        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Email</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientEmail}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Voyageurs</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.adults} adulte(s), ${params.children} enfant(s), ${params.babies} bébé(s) — animal : ${petText}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Client</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientName ?? "—"}</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Email</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientEmail}</td></tr>
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Téléphone</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientPhone ?? "—"}</td></tr>
-        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #ea        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #ea        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; 8px; text-align: right;">${params.total.toFixed(2)} €</td></tr>
+        <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientAddress ?? "—"}</td></tr>
+        <tr><td style="padding: 8px;"><strong>Total séjour</strong></td><td style="padding: 8px; text-align: right;">${params.total.toFixed(2)} €</td></tr>
         <tr><td style="padding: 8px;"><strong>Acompte payé</strong></td><td style="padding: 8px; text-align: right; color: #15803d;">${params.amountPaid.toFixed(2)} €</td></tr>
         <tr><td style="padding: 8px;"><strong>Solde restant</strong></td><td style="padding: 8px; text-align: right;">${params.balance.toFixed(2)} €</td></tr>
       </table>
@@ -260,6 +263,105 @@ export async function sendOwnerNotificationEmail(
     return { sent: true };
   } catch (error) {
     console.error("Échec de l'envoi de l'alerte propriétaire :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}
+
+// ============ RÈGLEMENT DU SOLDE ============
+
+/**
+ * Envoie au client le lien de règlement de son solde (avec copie au
+ * propriétaire en bcc). Appelé depuis /api/checkout-solde.
+ */
+export async function sendBalanceRequestEmail(params: {
+  clientName: string;
+  clientEmail: string;
+  villaName: string;
+  arrival: string;
+  departure: string;
+  balance: number;
+  paymentUrl: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour la demande de solde.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, clientEmail, villaName, arrival, departure, balance, paymentUrl } = params;
+  const fmt = (d: string) => {
+    const [y, m, j] = d.split("-");
+    return `${j}/${m}/${y}`;
+  };
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
+      <h2 style="color:#082f3a">Règlement du solde de votre séjour</h2>
+      <p>Bonjour ${clientName},</p>
+      <p>Votre séjour à <strong>${villaName}</strong> approche (du ${fmt(arrival)} au ${fmt(departure)}).</p>
+      <p>Il vous reste à régler le solde de <strong>${balance.toFixed(2)} €</strong> pour finaliser votre réservation.</p>
+      <p style="text-align:center;margin:32px 0">
+        <a href="${paymentUrl}" style="background:#082f3a;color:#fff;padding:14px 28px;border-radius:9999px;text-decoration:none;font-weight:bold">Régler mon solde en ligne</a>
+      </p>
+      <p style="font-size:13px;color:#8a755d">Paiement sécurisé par carte bancaire via Stripe. Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>${paymentUrl}</p>
+      <p>À très bientôt,<br>Escale à La Cotinière</p>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: clientEmail,
+      bcc: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Règlement du solde – ${villaName}`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Échec de l'envoi de la demande de solde :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}
+
+/**
+ * Alerte le propriétaire quand un client a réglé son solde.
+ * Appelé depuis /api/verifier-solde une fois le paiement confirmé.
+ */
+export async function sendBalancePaidOwnerEmail(params: {
+  clientName: string;
+  villaName: string;
+  arrival: string;
+  departure: string;
+  balance: number;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour l'alerte solde réglé.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, villaName, arrival, departure, balance } = params;
+  const fmt = (d: string) => {
+    const [y, m, j] = d.split("-");
+    return `${j}/${m}/${y}`;
+  };
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a">
+      <h2>✅ Solde réglé</h2>
+      <p><strong>${clientName}</strong> vient de régler son solde.</p>
+      <ul>
+        <li>Villa : <strong>${villaName}</strong></li>
+        <li>Séjour : du ${fmt(arrival)} au ${fmt(departure)}</li>
+        <li>Montant réglé : <strong>${balance.toFixed(2)} €</strong></li>
+      </ul>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: OWNER_NOTIFICATION_ADDRESS,
+      subject: `✅ Solde réglé – ${clientName} (${villaName})`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Échec de l'envoi de l'alerte solde réglé :", error);
     return { sent: false, reason: "send_error" };
   }
 }

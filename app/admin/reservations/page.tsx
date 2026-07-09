@@ -30,6 +30,7 @@ type Reservation = {
   notes: string | null;
   refunded_amount: number;
   refunded_at: string | null;
+  balance_status: string;
   created_at: string;
 };
 
@@ -151,6 +152,23 @@ export default function AdminReservationsPage() {
     setSavingId(null);
   }
 
+  async function demanderSolde(r: Reservation) {
+    setSavingId(r.id);
+    const res = await authFetch("/api/checkout-solde", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: r.id }),
+    });
+    const data = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      window.alert(data.error || "Erreur lors de la génération du lien.");
+      return;
+    }
+    window.alert("Demande de solde envoyée au client (copie sur votre messagerie).");
+    setReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, balance_status: "requested" } : x)));
+  }
+
   function villaName(slug: string): string {
     return villas.find((v) => v.slug === slug)?.name ?? slug;
   }
@@ -255,7 +273,7 @@ export default function AdminReservationsPage() {
                 </h2>
                 <div className="space-y-4">
                   {group.items.map((r) => (
-                    <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} savingId={savingId} />
+                    <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} savingId={savingId} />
                   ))}
                 </div>
               </div>
@@ -264,7 +282,7 @@ export default function AdminReservationsPage() {
         ) : (
           <div className="space-y-6">
             {visible.map((r) => (
-              <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} savingId={savingId} />
+              <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} savingId={savingId} />
             ))}
           </div>
         )}
@@ -283,6 +301,7 @@ function ReservationCard({
   refund,
   cancelReservation,
   reactivateReservation,
+  demanderSolde,
   savingId,
 }: {
   r: Reservation;
@@ -294,6 +313,7 @@ function ReservationCard({
   refund: (r: Reservation, amount: number) => Promise<string | null>;
   cancelReservation: (r: Reservation) => void;
   reactivateReservation: (r: Reservation) => void;
+  demanderSolde: (r: Reservation) => void;
   savingId: string | null;
 }) {
   const [noteDraft, setNoteDraft] = useState(r.notes ?? "");
@@ -372,6 +392,11 @@ function ReservationCard({
         {isSolde && !isCancelled && (
           <button type="button" onClick={() => toggleStatus(r)} disabled={savingId === r.id} className="mt-4 rounded-full bg-amber-600 px-6 py-2 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:opacity-40">
             Repasser en « acompte »
+          </button>
+        )}
+        {r.balance_status !== "paid" && !isCancelled && Number(r.balance) > 0 && (
+          <button type="button" onClick={() => demanderSolde(r)} disabled={savingId === r.id} className="mt-3 ml-0 block rounded-full border border-[#082f3a] px-6 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white disabled:opacity-40">
+            {r.balance_status === "requested" ? "Renvoyer la demande de solde" : "Demander le règlement du solde"}
           </button>
         )}
       </div>

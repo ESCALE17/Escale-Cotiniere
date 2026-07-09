@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { generateBalancePayment } from "@/app/lib/solde";
 
 /**
  * Parse un contenu iCal et renvoie les périodes réservées (VEVENT).
@@ -61,14 +62,61 @@ async function fetchIcal(url: string): Promise<{ start: string; end: string }[]>
 }
 
 /**
- * Synchronise tous les calendriers iCal de toutes les villas.
- * Pour chaque lien, récupère les dates réservées et les insère dans
+ * Rappel automatique du solde à J-30.
+ *
+ * Cherche les réservations actives dont l'arrivée est dans 30 jours ou moins
+ * (mais pas encore commencée), dont le solde reste dû et n'a jamais été
+ * demandé (balance_status = 'pending'), puis génère et envoie le lien de
+ * paiement du solde. Renvoie le nombre de demandes envoyées.
+ */
+async function processBalanceReminders(origin: string): Promise<{ sent: number; errors: number }> {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const limit = new Date(today);
+  limit.setDate(limit.getDate() + 30);
+  const limitStr = limit.toISOString().slice(0, 10);
+
+  // Réservations dont l'arrivée tombe entre aujourd'hui et J+30,
+  // solde encore à demander, réservation active.
+  const { data: rows, error } = await supabaseAdmin
+    .from("reservations")
+    .select("id, arrival, balance, balance_status, status")
+    .eq("status", "active")
+    .eq("balance_status", "pending")
+    .gt("balance", 0)
+    .gte("arrival", todayStr)
+    .lte("arrival", limitStr);
+
+  if (error || !rows) {
+    return { sent: 0, errors: error ? 1 : 0 };
+  }
+
+  let sent = 0;
+  let errors = 0;
+  for (const row of rows) {
+    const result = await generateBalancePayment(String(row.id), origin);
+    if (result.ok) {
+      sent += 1;
+    } else {
+      errors += 1;
+    }
+  }
+
+  return { sent, errors };
+}
+
+/**
+ * Synchronise tous les calendriers iCal de toutes les villas, PUIS
+ * déclenche les rappels de solde à J-30.
+ *
+ * Pour chaque lien iCal, récupère les dates réservées et les insère dans
  * blocked_dates avec source = 'ical'.
  *
  * On efface d'abord les anciens blocages 'ical' pour repartir propre
  * (les blocages manuels et 'reservation' ne sont PAS touchés).
  */
-export async function GET() {
+export async function GET(request: Request) {
   // Récupère les liens iCal de toutes les villas
   const { data: icals, error } = await supabaseAdmin
     .from("villas_ical")
@@ -122,10 +170,15 @@ export async function GET() {
     }
   }
 
+  // Rappels de solde à J-30 (même exécution quotidienne)
+  const origin = new URL(request.url).origin;
+  const balanceReminders = await processBalanceReminders(origin);
+
   return NextResponse.json({
     success: true,
     totalImported,
     summary,
+    balanceReminders,
     syncedAt: new Date().toISOString(),
   });
 }
