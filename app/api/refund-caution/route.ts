@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { sendCautionRefundEmail } from "@/app/lib/email";
+import { villas } from "@/app/data/villa";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-/**
- * POST : rembourse une partie (ou la totalite) de la CAUTION d'une reservation.
- * Corps attendu : { id, amount }  (amount en euros)
- *
- * Retrouve le paiement de la caution via caution_stripe_session_id, effectue
- * le remboursement, enregistre le montant rendu cumule et la date. Si la
- * caution est entierement rendue, passe caution_status a "refunded".
- */
 export async function POST(request: Request) {
   const body = await request.json();
-  const { id, amount } = body;
+  const { id, amount, reason } = body as {
+    id: string;
+    amount: number;
+    reason?: string;
+  };
 
   if (!id || amount === undefined || Number(amount) <= 0) {
     return NextResponse.json(
@@ -43,7 +41,6 @@ export async function POST(request: Request) {
   const cautionAmount = Number(reservation.caution_amount) || 0;
   const alreadyRefunded = Number(reservation.caution_refunded_amount) || 0;
 
-  // Ne pas rendre plus que la caution versee
   if (alreadyRefunded + Number(amount) > cautionAmount + 0.001) {
     return NextResponse.json(
       {
@@ -85,8 +82,6 @@ export async function POST(request: Request) {
     });
 
     const newRefunded = Math.round((alreadyRefunded + Number(amount)) * 100) / 100;
-
-    // Si toute la caution est rendue, on passe le statut a "refunded"
     const fullyRefunded = newRefunded >= cautionAmount - 0.001;
 
     await supabaseAdmin
@@ -97,6 +92,24 @@ export async function POST(request: Request) {
         caution_status: fullyRefunded ? "refunded" : "paid",
       })
       .eq("id", id);
+
+    if (reservation.client_email) {
+      const villaName =
+        villas.find((v) => v.slug === reservation.villa_slug)?.name ??
+        reservation.villa_slug;
+      try {
+        await sendCautionRefundEmail({
+          clientName: reservation.client_name || "",
+          clientEmail: reservation.client_email,
+          villaName,
+          cautionAmount,
+          refundedAmount: newRefunded,
+          reason: reason?.trim() || undefined,
+        });
+      } catch (e) {
+        console.error("Erreur envoi email remboursement caution :", e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

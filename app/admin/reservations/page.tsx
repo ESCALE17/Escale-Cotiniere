@@ -99,12 +99,12 @@ export default function AdminReservationsPage() {
     setSavingId(null);
   }
 
-  async function refund(r: Reservation, amount: number): Promise<string | null> {
+  async function refund(r: Reservation, amount: number, reason?: string): Promise<string | null> {
     setSavingId(r.id);
     const res = await authFetch("/api/refund", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: r.id, amount }),
+      body: JSON.stringify({ id: r.id, amount, reason }),
     });
     const data = await res.json();
     setSavingId(null);
@@ -121,12 +121,12 @@ export default function AdminReservationsPage() {
     return null;
   }
 
-  async function refundCaution(r: Reservation, amount: number): Promise<string | null> {
+  async function refundCaution(r: Reservation, amount: number, reason?: string): Promise<string | null> {
     setSavingId(r.id);
     const res = await authFetch("/api/refund-caution", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: r.id, amount }),
+      body: JSON.stringify({ id: r.id, amount, reason }),
     });
     const data = await res.json();
     setSavingId(null);
@@ -354,20 +354,22 @@ function ReservationCard({
   formatDateTime: (s: string) => string;
   toggleStatus: (r: Reservation) => void;
   saveNote: (id: string, notes: string) => void;
-  refund: (r: Reservation, amount: number) => Promise<string | null>;
+  refund: (r: Reservation, amount: number, reason?: string) => Promise<string | null>;
   cancelReservation: (r: Reservation) => void;
   reactivateReservation: (r: Reservation) => void;
   demanderSolde: (r: Reservation) => void;
   demanderCaution: (r: Reservation, amount: number) => void;
-  refundCaution: (r: Reservation, amount: number) => Promise<string | null>;
+  refundCaution: (r: Reservation, amount: number, reason?: string) => Promise<string | null>;
   savingId: string | null;
 }) {
   const [noteDraft, setNoteDraft] = useState(r.notes ?? "");
   const [refundAmount, setRefundAmount] = useState("");
   const [refundMsg, setRefundMsg] = useState("");
+  const [refundReason, setRefundReason] = useState("");
   const [cautionAmount, setCautionAmount] = useState(r.caution_amount ? String(r.caution_amount) : "");
   const [cautionRefundAmount, setCautionRefundAmount] = useState("");
   const [cautionRefundMsg, setCautionRefundMsg] = useState("");
+  const [cautionRefundReason, setCautionRefundReason] = useState("");
   const isSolde = r.payment_status === "solde";
   const isCancelled = r.status === "cancelled";
   const alreadyRefunded = Number(r.refunded_amount) || 0;
@@ -380,12 +382,13 @@ function ReservationCard({
       setRefundMsg("Saisis un montant supérieur à 0.");
       return;
     }
-    const error = await refund(r, amount);
+    const error = await refund(r, amount, refundReason);
     if (error) {
       setRefundMsg(error);
     } else {
       setRefundMsg(`Remboursement de ${amount.toFixed(2)} € effectué.`);
       setRefundAmount("");
+      setRefundReason("");
     }
   }
 
@@ -481,12 +484,13 @@ function ReservationCard({
                     setCautionRefundMsg("Saisis un montant supérieur à 0.");
                     return;
                   }
-                  const error = await refundCaution(r, amount);
+                  const error = await refundCaution(r, amount, cautionRefundReason);
                   if (error) {
                     setCautionRefundMsg(error);
                   } else {
                     setCautionRefundMsg(`Caution rendue : ${amount.toFixed(2)} €.`);
                     setCautionRefundAmount("");
+                    setCautionRefundReason("");
                   }
                 }}
                 disabled={savingId === r.id}
@@ -502,6 +506,18 @@ function ReservationCard({
                 Tout
               </button>
             </div>
+            {Number(cautionRefundAmount) > 0 && Number(cautionRefundAmount) < ((Number(r.caution_amount) || 0) - (Number(r.caution_refunded_amount) || 0)) - 0.001 && (
+              <div className="mt-3">
+                <label className="mb-1 block text-sm font-semibold text-[#082f3a]">Motif de la retenue (envoyé au client)</label>
+                <textarea
+                  value={cautionRefundReason}
+                  onChange={(e) => setCautionRefundReason(e.target.value)}
+                  placeholder="Ex : Retenue de 50 € pour le remplacement d'un verre cassé."
+                  rows={2}
+                  className="w-full rounded-xl border border-[#eadfce] px-4 py-3 text-[#082f3a] outline-none focus:border-[#082f3a]"
+                />
+              </div>
+            )}
             {cautionRefundMsg && <p className="mt-2 text-sm font-semibold text-[#082f3a]">{cautionRefundMsg}</p>}
           </>
         ) : r.caution_status === "refunded" ? (
@@ -558,6 +574,16 @@ function ReservationCard({
           <button type="button" onClick={handleRefund} disabled={savingId === r.id || remaining <= 0} className="rounded-full bg-[#082f3a] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4757] disabled:opacity-40">
             {savingId === r.id ? "…" : "Rembourser"}
           </button>
+        </div>
+        <div className="mt-3">
+          <label className="mb-1 block text-sm font-semibold text-[#082f3a]">Motif du remboursement (envoyé au client)</label>
+          <textarea
+            value={refundReason}
+            onChange={(e) => setRefundReason(e.target.value)}
+            placeholder="Ex : Remboursement suite à l'annulation de votre séjour."
+            rows={2}
+            className="w-full rounded-xl border border-[#eadfce] px-4 py-3 text-[#082f3a] outline-none focus:border-[#082f3a]"
+          />
         </div>
         {refundMsg && <p className="mt-2 text-sm font-semibold text-[#082f3a]">{refundMsg}</p>}
       </div>

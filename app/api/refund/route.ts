@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
+import { sendPaymentRefundEmail } from "@/app/lib/email";
+import { villas } from "@/app/data/villa";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 /**
  * POST : rembourse une partie (ou la totalité) de l'acompte d'une réservation.
- * Corps attendu : { id, amount }  (amount en euros)
+ * Corps attendu : { id, amount, reason? }  (amount en euros)
  *
  * Retrouve le paiement Stripe via stripe_session_id, effectue le remboursement,
- * puis enregistre le montant remboursé cumulé et la date.
+ * enregistre le montant remboursé cumulé et la date, puis envoie un email au
+ * client avec le motif saisi.
  */
 export async function POST(request: Request) {
   const body = await request.json();
-  const { id, amount } = body;
+  const { id, amount, reason } = body;
 
   if (!id || amount === undefined || Number(amount) <= 0) {
     return NextResponse.json(
@@ -22,7 +25,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // 1) Récupère la réservation
   const { data: reservation, error: fetchError } = await supabaseAdmin
     .from("reservations")
     .select("*")
@@ -36,7 +38,6 @@ export async function POST(request: Request) {
   const alreadyRefunded = Number(reservation.refunded_amount) || 0;
   const amountPaid = Number(reservation.amount_paid) || 0;
 
-  // Ne pas rembourser plus que ce qui a été payé
   if (alreadyRefunded + Number(amount) > amountPaid + 0.001) {
     return NextResponse.json(
       {
@@ -49,7 +50,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 2) Retrouve le paiement (payment_intent) via la session Stripe
     const session = await stripe.checkout.sessions.retrieve(
       reservation.stripe_session_id
     );
@@ -66,13 +66,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3) Effectue le remboursement (montant en centimes)
     await stripe.refunds.create({
       payment_intent: paymentIntentId,
       amount: Math.round(Number(amount) * 100),
     });
 
-    // 4) Enregistre le remboursement cumulé
     const newRefunded = Math.round((alreadyRefunded + Number(amount)) * 100) / 100;
 
     await supabaseAdmin
@@ -82,6 +80,23 @@ export async function POST(request: Request) {
         refunded_at: new Date().toISOString(),
       })
       .eq("id", id);
+
+    if (reservation.client_email) {
+      const villaName =
+        villas.find((v) => v.slug === reservation.villa_slug)?.name ??
+        reservation.villa_slug;
+      try {
+        await sendPaymentRefundEmail({
+          clientName: reservation.client_name || "",
+          clientEmail: reservation.client_email,
+          villaName,
+          refundedAmount: Number(amount),
+          reason: reason?.trim() || undefined,
+        });
+      } catch (e) {
+        console.error("Erreur envoi email remboursement :", e);
+      }
+    }
 
     return NextResponse.json({ success: true, refunded_amount: newRefunded });
   } catch (error) {

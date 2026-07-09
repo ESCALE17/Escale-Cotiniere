@@ -465,3 +465,100 @@ export async function sendCautionPaidOwnerEmail(params: {
     return { sent: false, reason: "send_error" };
   }
 }
+
+// ============ EMAILS DE REMBOURSEMENT ============
+
+/**
+ * Previent le client qu'un remboursement de sa caution a ete effectue.
+ * Si le remboursement est partiel, on inclut le motif saisi par le proprietaire.
+ */
+export async function sendCautionRefundEmail(params: {
+  clientName: string;
+  clientEmail: string;
+  villaName: string;
+  cautionAmount: number;
+  refundedAmount: number;
+  reason?: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour le remboursement de caution.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, clientEmail, villaName, cautionAmount, refundedAmount, reason } = params;
+  const isPartial = refundedAmount < cautionAmount - 0.001;
+
+  const partialBlock = isPartial
+    ? `
+      <p>Le montant restitue est de <strong>${refundedAmount.toFixed(2)} €</strong> sur une caution de ${cautionAmount.toFixed(2)} €.</p>
+      ${reason ? `<p style="background:#f7f1e8;padding:12px 16px;border-radius:12px"><strong>Motif de la retenue :</strong><br>${reason}</p>` : ""}
+    `
+    : `<p>Votre caution de <strong>${refundedAmount.toFixed(2)} €</strong> vous a ete <strong>integralement restituee</strong>.</p>`;
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
+      <h2 style="color:#082f3a">Restitution de votre caution</h2>
+      <p>Bonjour ${clientName},</p>
+      <p>Suite a votre sejour a <strong>${villaName}</strong>, nous avons procede au remboursement de votre caution.</p>
+      ${partialBlock}
+      <p style="font-size:13px;color:#8a755d">Le remboursement apparaitra sur votre compte sous quelques jours (delai bancaire).</p>
+      <p>Merci de votre sejour et a bientot,<br>Escale a La Cotiniere</p>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: clientEmail,
+      bcc: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Restitution de votre caution - ${villaName}`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Echec de l'envoi du remboursement de caution :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}
+
+/**
+ * Previent le client qu'un remboursement (loyer/acompte) a ete effectue,
+ * avec le motif saisi par le proprietaire.
+ */
+export async function sendPaymentRefundEmail(params: {
+  clientName: string;
+  clientEmail: string;
+  villaName: string;
+  refundedAmount: number;
+  reason?: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour le remboursement.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, clientEmail, villaName, refundedAmount, reason } = params;
+
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
+      <h2 style="color:#082f3a">Remboursement effectue</h2>
+      <p>Bonjour ${clientName},</p>
+      <p>Nous avons procede a un remboursement de <strong>${refundedAmount.toFixed(2)} €</strong> concernant votre reservation a <strong>${villaName}</strong>.</p>
+      ${reason ? `<p style="background:#f7f1e8;padding:12px 16px;border-radius:12px"><strong>Motif :</strong><br>${reason}</p>` : ""}
+      <p style="font-size:13px;color:#8a755d">Le remboursement apparaitra sur votre compte sous quelques jours (delai bancaire).</p>
+      <p>Cordialement,<br>Escale a La Cotiniere</p>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: clientEmail,
+      bcc: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Remboursement - ${villaName}`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Echec de l'envoi du remboursement :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}
