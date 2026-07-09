@@ -377,7 +377,11 @@ function ReservationCard({
         <div className="grid gap-2 sm:grid-cols-2">
           <p className="text-[#082f3a]">Total séjour : <strong>{r.total.toFixed(2)} €</strong></p>
           <p className="text-[#082f3a]">Acompte payé : <strong className="text-green-700">{r.amount_paid.toFixed(2)} €</strong></p>
-          <p className="text-[#082f3a]">Solde restant dû : <strong>{r.balance.toFixed(2)} €</strong></p>
+          {r.balance_status === "paid" ? (
+            <p className="text-[#082f3a]">Solde : <strong className="text-green-700">✅ réglé</strong></p>
+          ) : (
+            <p className="text-[#082f3a]">Solde restant dû : <strong>{r.balance.toFixed(2)} €</strong></p>
+          )}
           <p className="text-[#082f3a]">Dont taxe de séjour : {r.tourist_tax.toFixed(2)} €</p>
           {alreadyRefunded > 0 && (
             <p className="text-red-700">Déjà remboursé : <strong>{alreadyRefunded.toFixed(2)} €</strong></p>
