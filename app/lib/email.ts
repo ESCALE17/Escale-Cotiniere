@@ -1,7 +1,8 @@
 import { Resend } from "resend";
 import { generateContractPdfBuffer } from "@/app/lib/contract";
 
-const FROM_ADDRESS = "Escale à La Cotinière <contact@escalealacotiniere.fr>";
+const FROM_ADDRESS = "Escale à La Cotinière <contact@send.escalealacotiniere.fr>";
+const REPLY_TO_ADDRESS = "contact@escalealacotiniere.fr";
 const OWNER_NOTIFICATION_ADDRESS = "contact@escalealacotiniere.fr";
 
 export type BookingConfirmationEmailParams = {
@@ -193,6 +194,7 @@ export async function sendBookingConfirmationEmail(
   try {
     await resend.emails.send({
       from: FROM_ADDRESS,
+      replyTo: REPLY_TO_ADDRESS,
       to: params.clientEmail,
       bcc: OWNER_NOTIFICATION_ADDRESS,
       subject: `${M.subject} — ${params.villaName}`,
@@ -256,6 +258,7 @@ export async function sendOwnerNotificationEmail(
   try {
     await resend.emails.send({
       from: FROM_ADDRESS,
+      replyTo: REPLY_TO_ADDRESS,
       to: OWNER_NOTIFICATION_ADDRESS,
       subject: `Nouvelle réservation — ${params.villaName} (${params.arrival} → ${params.departure})`,
       html,
@@ -308,6 +311,7 @@ export async function sendBalanceRequestEmail(params: {
   try {
     await resend.emails.send({
       from: FROM_ADDRESS,
+      replyTo: REPLY_TO_ADDRESS,
       to: clientEmail,
       bcc: OWNER_NOTIFICATION_ADDRESS,
       subject: `Règlement du solde – ${villaName}`,
@@ -355,6 +359,7 @@ export async function sendBalancePaidOwnerEmail(params: {
   try {
     await resend.emails.send({
       from: FROM_ADDRESS,
+      replyTo: REPLY_TO_ADDRESS,
       to: OWNER_NOTIFICATION_ADDRESS,
       subject: `✅ Solde réglé – ${clientName} (${villaName})`,
       html,
