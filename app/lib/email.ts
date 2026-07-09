@@ -365,3 +365,103 @@ export async function sendBalancePaidOwnerEmail(params: {
     return { sent: false, reason: "send_error" };
   }
 }
+
+// ============ CAUTION ============
+
+/**
+ * Envoie au client le lien de paiement de sa caution (avec copie au
+ * proprietaire en bcc). Appele depuis /api/checkout-caution.
+ */
+export async function sendCautionRequestEmail(params: {
+  clientName: string;
+  clientEmail: string;
+  villaName: string;
+  arrival: string;
+  departure: string;
+  caution: number;
+  paymentUrl: string;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour la demande de caution.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, clientEmail, villaName, arrival, departure, caution, paymentUrl } = params;
+  const fmt = (d: string) => {
+    const [y, m, j] = d.split("-");
+    return `${j}/${m}/${y}`;
+  };
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
+      <h2 style="color:#082f3a">Caution de votre sejour</h2>
+      <p>Bonjour ${clientName},</p>
+      <p>Dans le cadre de votre sejour a <strong>${villaName}</strong> (du ${fmt(arrival)} au ${fmt(departure)}), nous vous demandons le versement d'une caution de <strong>${caution.toFixed(2)} €</strong>.</p>
+      <p>Cette caution vous sera <strong>integralement restituee apres votre depart</strong>, sous reserve de l'etat des lieux de sortie.</p>
+      <p style="text-align:center;margin:32px 0">
+        <a href="${paymentUrl}" style="background:#082f3a;color:#fff;padding:14px 28px;border-radius:9999px;text-decoration:none;font-weight:bold">Verser ma caution en ligne</a>
+      </p>
+      <p style="font-size:13px;color:#8a755d">Paiement securise par carte bancaire via Stripe. Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>${paymentUrl}</p>
+      <p>A tres bientot,<br>Escale a La Cotiniere</p>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: clientEmail,
+      bcc: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Caution - ${villaName}`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Echec de l'envoi de la demande de caution :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}
+
+/**
+ * Alerte le proprietaire quand un client a verse sa caution.
+ * Appele depuis /api/verifier-caution une fois le paiement confirme.
+ */
+export async function sendCautionPaidOwnerEmail(params: {
+  clientName: string;
+  villaName: string;
+  arrival: string;
+  departure: string;
+  caution: number;
+}) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.error("RESEND_API_KEY manquante pour l'alerte caution versee.");
+    return { sent: false, reason: "no_api_key" };
+  }
+  const resend = new Resend(apiKey);
+  const { clientName, villaName, arrival, departure, caution } = params;
+  const fmt = (d: string) => {
+    const [y, m, j] = d.split("-");
+    return `${j}/${m}/${y}`;
+  };
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#082f3a">
+      <h2>Caution versee</h2>
+      <p><strong>${clientName}</strong> vient de verser sa caution.</p>
+      <ul>
+        <li>Villa : <strong>${villaName}</strong></li>
+        <li>Sejour : du ${fmt(arrival)} au ${fmt(departure)}</li>
+        <li>Montant : <strong>${caution.toFixed(2)} €</strong></li>
+      </ul>
+      <p style="font-size:13px;color:#8a755d">Pensez a la restituer (totalement ou partiellement) apres le depart, depuis votre espace d'administration.</p>
+    </div>`;
+  try {
+    await resend.emails.send({
+      from: FROM_ADDRESS,
+      to: OWNER_NOTIFICATION_ADDRESS,
+      subject: `Caution versee - ${clientName} (${villaName})`,
+      html,
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("Echec de l'envoi de l'alerte caution versee :", error);
+    return { sent: false, reason: "send_error" };
+  }
+}

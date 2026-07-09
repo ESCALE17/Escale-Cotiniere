@@ -31,6 +31,9 @@ type Reservation = {
   refunded_amount: number;
   refunded_at: string | null;
   balance_status: string;
+  caution_status: string;
+  caution_amount: number | null;
+  caution_refunded_amount: number;
   created_at: string;
 };
 
@@ -118,6 +121,28 @@ export default function AdminReservationsPage() {
     return null;
   }
 
+  async function refundCaution(r: Reservation, amount: number): Promise<string | null> {
+    setSavingId(r.id);
+    const res = await authFetch("/api/refund-caution", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: r.id, amount }),
+    });
+    const data = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      return data.error ?? "Erreur lors du remboursement de la caution.";
+    }
+    setReservations((prev) =>
+      prev.map((x) =>
+        x.id === r.id
+          ? { ...x, caution_refunded_amount: data.caution_refunded_amount, caution_status: data.caution_status }
+          : x
+      )
+    );
+    return null;
+  }
+
   async function cancelReservation(r: Reservation) {
     const ok = window.confirm(
       `Annuler la réservation de ${r.client_name ?? "ce client"} ? Les dates seront libérées. La réservation restera dans l'historique.`
@@ -167,6 +192,23 @@ export default function AdminReservationsPage() {
     }
     window.alert("Demande de solde envoyée au client (copie sur votre messagerie).");
     setReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, balance_status: "requested" } : x)));
+  }
+
+  async function demanderCaution(r: Reservation, amount: number) {
+    setSavingId(r.id);
+    const res = await authFetch("/api/checkout-caution", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: r.id, amount }),
+    });
+    const data = await res.json();
+    setSavingId(null);
+    if (!res.ok) {
+      window.alert(data.error || "Erreur lors de la generation du lien de caution.");
+      return;
+    }
+    window.alert("Demande de caution envoyee au client (copie sur votre messagerie).");
+    setReservations((prev) => prev.map((x) => (x.id === r.id ? { ...x, caution_status: "requested", caution_amount: amount } : x)));
   }
 
   function villaName(slug: string): string {
@@ -273,7 +315,7 @@ export default function AdminReservationsPage() {
                 </h2>
                 <div className="space-y-4">
                   {group.items.map((r) => (
-                    <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} savingId={savingId} />
+                    <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} demanderCaution={demanderCaution} refundCaution={refundCaution} savingId={savingId} />
                   ))}
                 </div>
               </div>
@@ -282,7 +324,7 @@ export default function AdminReservationsPage() {
         ) : (
           <div className="space-y-6">
             {visible.map((r) => (
-              <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} savingId={savingId} />
+              <ReservationCard key={r.id} r={r} villaName={villaName} formatFr={formatFr} formatDateTime={formatDateTime} toggleStatus={toggleStatus} saveNote={saveNote} refund={refund} cancelReservation={cancelReservation} reactivateReservation={reactivateReservation} demanderSolde={demanderSolde} demanderCaution={demanderCaution} refundCaution={refundCaution} savingId={savingId} />
             ))}
           </div>
         )}
@@ -302,6 +344,8 @@ function ReservationCard({
   cancelReservation,
   reactivateReservation,
   demanderSolde,
+  demanderCaution,
+  refundCaution,
   savingId,
 }: {
   r: Reservation;
@@ -314,11 +358,16 @@ function ReservationCard({
   cancelReservation: (r: Reservation) => void;
   reactivateReservation: (r: Reservation) => void;
   demanderSolde: (r: Reservation) => void;
+  demanderCaution: (r: Reservation, amount: number) => void;
+  refundCaution: (r: Reservation, amount: number) => Promise<string | null>;
   savingId: string | null;
 }) {
   const [noteDraft, setNoteDraft] = useState(r.notes ?? "");
   const [refundAmount, setRefundAmount] = useState("");
   const [refundMsg, setRefundMsg] = useState("");
+  const [cautionAmount, setCautionAmount] = useState(r.caution_amount ? String(r.caution_amount) : "");
+  const [cautionRefundAmount, setCautionRefundAmount] = useState("");
+  const [cautionRefundMsg, setCautionRefundMsg] = useState("");
   const isSolde = r.payment_status === "solde";
   const isCancelled = r.status === "cancelled";
   const alreadyRefunded = Number(r.refunded_amount) || 0;
@@ -405,6 +454,92 @@ function ReservationCard({
         )}
       </div>
 
+      <div className="mt-4 rounded-2xl border border-[#eadfce] p-4">
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-[#8a755d]">Caution</h3>
+        {r.caution_status === "paid" ? (
+          <>
+            <p className="mb-2 text-[#082f3a]">Caution versée : <strong className="text-green-700">{(Number(r.caution_amount) || 0).toFixed(2)} €</strong>{Number(r.caution_refunded_amount) > 0 ? <span className="text-red-700"> — déjà rendue : {Number(r.caution_refunded_amount).toFixed(2)} €</span> : null}</p>
+            <p className="mb-3 text-sm text-[#8a755d]">
+              À rendre au client après le séjour. Rendez la totalité, ou une partie seulement si vous retenez un montant (dégâts…). Restant à rendre : {Math.max(0, (Number(r.caution_amount) || 0) - (Number(r.caution_refunded_amount) || 0)).toFixed(2)} €.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={cautionRefundAmount}
+                onChange={(e) => setCautionRefundAmount(e.target.value)}
+                placeholder="Montant €"
+                className="w-32 rounded-xl border border-[#eadfce] px-4 py-2 text-right text-[#082f3a] outline-none focus:border-[#082f3a]"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  setCautionRefundMsg("");
+                  const amount = Number(cautionRefundAmount);
+                  if (!amount || amount <= 0) {
+                    setCautionRefundMsg("Saisis un montant supérieur à 0.");
+                    return;
+                  }
+                  const error = await refundCaution(r, amount);
+                  if (error) {
+                    setCautionRefundMsg(error);
+                  } else {
+                    setCautionRefundMsg(`Caution rendue : ${amount.toFixed(2)} €.`);
+                    setCautionRefundAmount("");
+                  }
+                }}
+                disabled={savingId === r.id}
+                className="rounded-full bg-[#082f3a] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#0d4757] disabled:opacity-40"
+              >
+                {savingId === r.id ? "…" : "Rendre la caution"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCautionRefundAmount(String(Math.max(0, (Number(r.caution_amount) || 0) - (Number(r.caution_refunded_amount) || 0))))}
+                className="rounded-full border border-[#082f3a] px-4 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white"
+              >
+                Tout
+              </button>
+            </div>
+            {cautionRefundMsg && <p className="mt-2 text-sm font-semibold text-[#082f3a]">{cautionRefundMsg}</p>}
+          </>
+        ) : r.caution_status === "refunded" ? (
+          <p className="text-[#082f3a]">Caution rendue : <strong>{Number(r.caution_refunded_amount).toFixed(2)} €</strong></p>
+        ) : (
+          <>
+            <p className="mb-3 text-sm text-[#8a755d]">
+              Montant de la caution à demander au client (modifiable). Elle sera à restituer après le séjour.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={cautionAmount}
+                onChange={(e) => setCautionAmount(e.target.value)}
+                placeholder="Montant €"
+                className="w-32 rounded-xl border border-[#eadfce] px-4 py-2 text-right text-[#082f3a] outline-none focus:border-[#082f3a]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const amount = Number(cautionAmount);
+                  if (!amount || amount <= 0) {
+                    window.alert("Saisis un montant de caution supérieur à 0.");
+                    return;
+                  }
+                  demanderCaution(r, amount);
+                }}
+                disabled={savingId === r.id || isCancelled}
+                className="rounded-full border border-[#082f3a] px-6 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white disabled:opacity-40"
+              >
+                {r.caution_status === "requested" ? "Renvoyer la demande de caution" : "Demander la caution"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
       <div className="mt-4 rounded-2xl border border-[#eadfce] p-4">
         <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-[#8a755d]">Remboursement</h3>
         <p className="mb-3 text-sm text-[#8a755d]">
