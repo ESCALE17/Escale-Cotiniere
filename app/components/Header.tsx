@@ -37,7 +37,7 @@ export default function Header() {
             {!isHome && (
               <Link
                 href="/"
-                className="rounded-full bg-[#082f3a] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0d4757] md:px-4 md:text-sm"
+                className="hidden rounded-full bg-[#082f3a] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#0d4757] md:inline-block md:px-4 md:text-sm"
               >
                 {t("nav.backHome")}
               </Link>
@@ -109,6 +109,15 @@ export default function Header() {
         <div className="mx-auto mt-2 max-w-7xl md:hidden">
           <div className="rounded-3xl bg-white/95 p-4 shadow-lg backdrop-blur">
             <nav className="flex flex-col gap-1 text-base font-semibold text-[#082f3a]">
+              {!isHome && (
+                <a
+                  href="/"
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-2xl bg-[#082f3a] px-4 py-3 text-white transition hover:bg-[#0d4757]"
+                >
+                  {t("nav.backHome")}
+                </a>
+              )}
               <a
                 href="/#collection"
                 onClick={() => setMenuOpen(false)}
