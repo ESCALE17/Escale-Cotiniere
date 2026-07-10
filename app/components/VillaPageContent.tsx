@@ -46,23 +46,23 @@ export default function VillaPageContent({ villaSlug }: { villaSlug: string }) {
 
         <div className="mb-10 grid grid-cols-2 gap-6 rounded-3xl bg-white p-8 shadow-lg md:grid-cols-4">
           <div>
-            <p className="text-sm text-gray-500">{t("villaPage.capacity")}</p>
+            <p className="text-sm font-semibold text-[#8a755d]">{t("villaPage.capacity")}</p>
             <p className="font-semibold">
               {translated?.capacity ?? villa.capacity}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">{t("villaPage.bedrooms")}</p>
+            <p className="text-sm font-semibold text-[#8a755d]">{t("villaPage.bedrooms")}</p>
             <p className="font-semibold">{villa.bedrooms}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm font-semibold text-[#8a755d]">
               {t("villaPage.bathrooms")}
             </p>
             <p className="font-semibold">{villa.bathrooms}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">{t("villaPage.pool")}</p>
+            <p className="text-sm font-semibold text-[#8a755d]">{t("villaPage.pool")}</p>
             <p className="font-semibold">{t("villaPage.poolPrivate")}</p>
           </div>
         </div>

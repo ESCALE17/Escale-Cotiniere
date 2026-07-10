@@ -84,21 +84,21 @@ function CoordonneesPageContent() {
 
           <div className="grid gap-6 md:grid-cols-2">
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.nom")}
               value={form.nom}
               onChange={(e) => update("nom", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.prenom")}
               value={form.prenom}
               onChange={(e) => update("prenom", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4 md:col-span-2"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a] md:col-span-2"
               placeholder={t("coord.email")}
               type="email"
               value={form.email}
@@ -106,42 +106,42 @@ function CoordonneesPageContent() {
             />
 
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.telephone")}
               value={form.telephone}
               onChange={(e) => update("telephone", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.telephoneFixe")}
               value={form.telephoneFixe}
               onChange={(e) => update("telephoneFixe", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4 md:col-span-2"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a] md:col-span-2"
               placeholder={t("coord.adresse")}
               value={form.adresse}
               onChange={(e) => update("adresse", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.codePostal")}
               value={form.codePostal}
               onChange={(e) => update("codePostal", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]"
               placeholder={t("coord.ville")}
               value={form.ville}
               onChange={(e) => update("ville", e.target.value)}
             />
 
             <input
-              className="rounded-xl border p-4 md:col-span-2"
+              className="rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a] md:col-span-2"
               placeholder={t("coord.pays")}
               value={form.pays}
               onChange={(e) => update("pays", e.target.value)}

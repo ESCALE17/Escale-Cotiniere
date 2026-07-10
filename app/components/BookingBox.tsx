@@ -105,7 +105,9 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
           classNames={{
             months: "flex flex-col gap-8 md:flex-row",
             month: "space-y-4",
-            caption: "flex justify-center pb-4 text-xl font-bold text-[#082f3a]",
+            caption: "flex justify-center items-center pb-4 text-xl font-bold text-[#082f3a] relative",
+              caption_label: "text-xl font-bold text-[#082f3a]",
+              nav_button: "text-[#082f3a] hover:bg-[#d8b66a]/30 rounded-full p-1",
             table: "w-full border-collapse",
             head_cell: "w-9 md:w-11 text-xs md:text-sm font-semibold text-[#8a755d]",
             cell: "h-9 w-9 md:h-11 md:w-11 text-center text-xs md:text-sm",
