@@ -1,77 +1,33 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useLanguage } from "@/app/i18n/LanguageContext";
+import { contenu, type Locale } from "./contenu";
 import styles from "./RenovationGallery.module.css";
 
-/* Dossier des images dans /public. Les fichiers ont été déposés dans
-   public/images/renovation/ (nommés <id>-avant.jpg / <id>-apres.jpg, etc.). */
 const BASE = "/images/renovation";
 
-type Pair = {
-  id: string;
-  label: string;
-  beforeAlt: string;
-  afterAlt: string;
-};
-
-type Shot = {
-  id: string;
-  caption: string;
-  alt: string;
-};
-
-/* --- Paires avant / après. Pour renommer une pièce, changez "label". ------ */
-const PAIRS: Pair[] = [
-  {
-    id: "chambre-paille",
-    label: "La chambre",
-    beforeAlt: "La chambre avant travaux : ancien garage encombré aux murs de pierre brute.",
-    afterAlt: "La chambre après rénovation : murs couleur paille, armoire ancienne et bureau.",
-  },
-  {
-    id: "salle-de-bain",
-    label: "La salle de bain",
-    beforeAlt: "La salle de bain avant : carrelage rose et sanitaires anciens.",
-    afterAlt: "La salle de bain après : carrelage pierre, double vasque et baignoire.",
-  },
-  {
-    id: "salon",
-    label: "Le salon",
-    beforeAlt: "Le séjour avant : tomettes, cheminée crépie et mobilier ancien.",
-    afterAlt: "Le séjour après : pièce ouverte, pierres apparentes et cuisine contemporaine.",
-  },
-  {
-    id: "terrasse",
-    label: "La terrasse",
-    beforeAlt: "La façade en pierre avant travaux.",
-    afterAlt: "La terrasse après : table, parasol et plage en bois au bord de la piscine.",
-  },
-  {
-    id: "piscine",
-    label: "La piscine",
-    beforeAlt: "La façade en pierre et sa cheminée avant travaux.",
-    afterAlt: "La piscine après : bassin, transats et plage en bois.",
-  },
+const PAIRS = [
+  { id: "chambre-paille", key: "chambre" as const },
+  { id: "salle-de-bain", key: "sdb" as const },
+  { id: "salon", key: "salon" as const },
+  { id: "terrasse", key: "terrasse" as const },
+  { id: "piscine", key: "piscine" as const },
 ];
 
-/* --- Photos de chantier (seules). Modifiez librement les légendes. -------- */
-const SHOTS: Shot[] = [
-  {
-    id: "chantier-reseaux",
-    caption: "Le passage des réseaux avant la dalle : plomberie et électricité tirées à même la terre battue.",
-    alt: "Tranchées et gaines dans le sol pendant le chantier.",
-  },
-  {
-    id: "chantier-beton",
-    caption: "Jour du coulage : la pompe à béton déployée dans la ruelle du logis.",
-    alt: "Camion pompe à béton, bras déployé au-dessus du chantier.",
-  },
-  {
-    id: "chantier-finitions",
-    caption: "Les finitions : cloisons et plafonds montés, la pierre d'origine conservée et mise en valeur.",
-    alt: "Grande pièce en finition avec mur de pierre apparente conservé.",
-  },
+const SHOTS = [
+  { id: "chantier-reseaux", key: "reseaux" as const },
+  { id: "chantier-beton", key: "beton" as const },
+  { id: "chantier-finitions", key: "finitions" as const },
 ];
+
+// Petits mots d'interface selon la langue
+const WORDS: Record<Locale, { avant: string; apres: string; enlarge: string }> = {
+  fr: { avant: "avant", apres: "après", enlarge: "Agrandir" },
+  en: { avant: "before", apres: "after", enlarge: "Enlarge" },
+  de: { avant: "vorher", apres: "nachher", enlarge: "Vergrößern" },
+  es: { avant: "antes", apres: "después", enlarge: "Ampliar" },
+};
 
 type Active = { src: string; alt: string; caption: string } | null;
 
@@ -86,6 +42,11 @@ function Photo({ name, alt }: { name: string; alt: string }) {
 }
 
 export default function RenovationGallery() {
+  const { locale } = useLanguage();
+  const loc = (locale as Locale) in contenu ? (locale as Locale) : "fr";
+  const c = contenu[loc];
+  const w = WORDS[loc];
+
   const [active, setActive] = useState<Active>(null);
   const close = useCallback(() => setActive(null), []);
 
@@ -105,60 +66,66 @@ export default function RenovationGallery() {
   return (
     <div className={styles.gallery}>
       <div className={styles.pairs}>
-        {PAIRS.map((p) => (
-          <div className={styles.pair} key={p.id}>
-            <div className={styles.fan}>
-              <button
-                type="button"
-                className={`${styles.card} ${styles.cardBefore}`}
-                onClick={() =>
-                  setActive({ src: `${BASE}/${p.id}-avant.jpg`, alt: p.beforeAlt, caption: `${p.label} — avant` })
-                }
-                aria-label={`Agrandir : ${p.label}, avant`}
-              >
-                <Photo name={`${p.id}-avant`} alt={p.beforeAlt} />
-              </button>
+        {PAIRS.map((p) => {
+          const label = c.pairs[p.key];
+          return (
+            <div className={styles.pair} key={p.id}>
+              <div className={styles.fan}>
+                <button
+                  type="button"
+                  className={`${styles.card} ${styles.cardBefore}`}
+                  onClick={() =>
+                    setActive({ src: `${BASE}/${p.id}-avant.jpg`, alt: `${label} — ${w.avant}`, caption: `${label} — ${w.avant}` })
+                  }
+                  aria-label={`${w.enlarge} : ${label}, ${w.avant}`}
+                >
+                  <Photo name={`${p.id}-avant`} alt={`${label} — ${w.avant}`} />
+                </button>
 
-              <button
-                type="button"
-                className={`${styles.card} ${styles.cardAfter}`}
-                onClick={() =>
-                  setActive({ src: `${BASE}/${p.id}-apres.jpg`, alt: p.afterAlt, caption: `${p.label} — après` })
-                }
-                aria-label={`Agrandir : ${p.label}, après`}
-              >
-                <Photo name={`${p.id}-apres`} alt={p.afterAlt} />
-              </button>
-            </div>
+                <button
+                  type="button"
+                  className={`${styles.card} ${styles.cardAfter}`}
+                  onClick={() =>
+                    setActive({ src: `${BASE}/${p.id}-apres.jpg`, alt: `${label} — ${w.apres}`, caption: `${label} — ${w.apres}` })
+                  }
+                  aria-label={`${w.enlarge} : ${label}, ${w.apres}`}
+                >
+                  <Photo name={`${p.id}-apres`} alt={`${label} — ${w.apres}`} />
+                </button>
+              </div>
 
-            <div className={styles.pairLabel}>
-              <span className={styles.rule} aria-hidden="true" />
-              {p.label}
+              <div className={styles.pairLabel}>
+                <span className={styles.rule} aria-hidden="true" />
+                {label}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-24">
-        <h3 className="text-2xl md:text-3xl font-semibold text-center text-[#082f3a]">Le chantier</h3>
+        <h3 className="text-2xl md:text-3xl font-semibold text-center text-[#082f3a]">{c.chantierTitle}</h3>
         <p className="mt-3 mb-12 text-center text-[#082f3a]/70 max-w-2xl mx-auto leading-relaxed">
-          Quelques étapes des travaux, du gros œuvre aux finitions.
+          {c.chantierIntro}
         </p>
 
         <div className={styles.shots}>
-          {SHOTS.map((s) => (
-            <figure className={styles.shot} key={s.id}>
-              <button
-                type="button"
-                className={styles.shotFrame}
-                onClick={() => setActive({ src: `${BASE}/${s.id}.jpg`, alt: s.alt, caption: s.caption })}
-                aria-label={`Agrandir : ${s.caption}`}
-              >
-                <Photo name={s.id} alt={s.alt} />
-              </button>
-              <figcaption className={styles.shotCaption}>{s.caption}</figcaption>
-            </figure>
-          ))}
+          {SHOTS.map((s) => {
+            const caption = c.captions[s.key];
+            return (
+              <figure className={styles.shot} key={s.id}>
+                <button
+                  type="button"
+                  className={styles.shotFrame}
+                  onClick={() => setActive({ src: `${BASE}/${s.id}.jpg`, alt: caption, caption })}
+                  aria-label={`${w.enlarge} : ${caption}`}
+                >
+                  <Photo name={s.id} alt={caption} />
+                </button>
+                <figcaption className={styles.shotCaption}>{caption}</figcaption>
+              </figure>
+            );
+          })}
         </div>
       </div>
 

@@ -57,6 +57,7 @@ export default function Header() {
             <a href="/#cotiniere">{t("nav.cotiniere")}</a>
             <Link href="/qui-sommes-nous">{t("nav.about")}</Link>
             <a href="/#contact">{t("nav.contact")}</a>
+            <Link href="/coup-de-coeur">{t("nav.recos")}</Link>
           </div>
 
           <div className="flex items-center gap-2">
@@ -147,6 +148,13 @@ export default function Header() {
               >
                 {t("nav.contact")}
               </a>
+              <Link
+                href="/coup-de-coeur"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-2xl px-4 py-3 transition hover:bg-[#f7f1e8]"
+              >
+                {t("nav.recos")}
+              </Link>
             </nav>
           </div>
         </div>
