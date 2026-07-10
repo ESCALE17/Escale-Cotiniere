@@ -1,0 +1,258 @@
+/* ==========================================================================
+   Galerie rénovation — Logis du pêcheur
+   Réglages faciles à modifier ci-dessous :
+     --sea         : la couleur d'accent (le bleu du site, #082f3a)
+     --ink         : la couleur du texte
+     --card-ratio  : le format des cadres de l'éventail (ex. 4 / 3, 1 / 1, 3 / 4)
+   ========================================================================== */
+
+.gallery {
+  --ink: #082f3a;
+  --muted: #5b6b70;
+  --sea: #082f3a;
+  --card-bg: #ffffff;
+  --card-ratio: 4 / 3;
+  --radius: 4px;
+  --shadow: 0 14px 34px -12px rgba(8, 47, 58, 0.28);
+  color: var(--ink);
+}
+
+/* ---- Liste des paires ---------------------------------------------------- */
+.pairs {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3rem, 6vw, 5.5rem);
+}
+
+.pair {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* ---- L'éventail ---------------------------------------------------------- */
+.fan {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: 2.5rem 0;
+}
+
+.card {
+  position: relative;
+  width: min(46%, 330px);
+  aspect-ratio: var(--card-ratio);
+  border: 6px solid #fff;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  line-height: 0;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  cursor: zoom-in;
+}
+
+.card picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cardBefore {
+  transform: rotate(-6deg);
+  transform-origin: bottom right;
+  margin-right: -1.5%;
+  z-index: 1;
+}
+
+.cardAfter {
+  transform: rotate(6deg);
+  transform-origin: bottom left;
+  margin-left: -1.5%;
+  z-index: 2;
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--sea);
+  outline-offset: 3px;
+}
+
+/* ---- Nom de la pièce ----------------------------------------------------- */
+.pairLabel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: clamp(1.05rem, 1.4vw, 1.3rem);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.rule {
+  width: 34px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sea);
+}
+
+/* ---- Photos de chantier -------------------------------------------------- */
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: clamp(1.25rem, 3vw, 2rem);
+}
+
+.shot {
+  margin: 0;
+}
+
+.shotFrame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 6px solid #fff;
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  padding: 0;
+  line-height: 0;
+  appearance: none;
+  cursor: zoom-in;
+}
+
+.shotFrame picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.shotFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shotFrame:focus-visible {
+  outline: 3px solid var(--sea);
+  outline-offset: 3px;
+}
+
+.shotCaption {
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---- Vue agrandie (lightbox) --------------------------------------------- */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(20, 30, 36, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lightbox {
+    animation: fade 0.2s ease;
+  }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightboxImg {
+  max-width: min(1100px, 92vw);
+  max-height: 86vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 3px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+}
+
+.lightboxClose {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lightboxClose:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+.lightboxClose:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+.lightboxCaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.2rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---- Repli mobile : l'éventail se déplie en pile verticale --------------- */
+@media (max-width: 700px) {
+  .fan {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0 0;
+  }
+  .card,
+  .cardBefore,
+  .cardAfter {
+    transform: none;
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+  }
+  .fan:hover .cardBefore,
+  .fan:hover .cardAfter {
+    transform: none;
+  }
+  .pairLabel {
+    margin-top: 1.25rem;
+  }
+}

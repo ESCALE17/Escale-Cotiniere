@@ -220,6 +220,7 @@ export const translations = {
     nav: {
       brand: "Escale à La Cotinière",
       backHome: "← Retour à l'accueil",
+      about: "Qui sommes-nous",
       collection: "Notre Collection",
       cotiniere: "La Cotinière",
       contact: "Contact",
@@ -411,6 +412,7 @@ export const translations = {
     nav: {
       brand: "Escale à La Cotinière",
       backHome: "← Back to home",
+      about: "About us",
       collection: "Our Collection",
       cotiniere: "La Cotinière",
       contact: "Contact",
@@ -602,6 +604,7 @@ export const translations = {
     nav: {
       brand: "Escale à La Cotinière",
       backHome: "← Zurück zur Startseite",
+      about: "Über uns",
       collection: "Unsere Kollektion",
       cotiniere: "La Cotinière",
       contact: "Kontakt",
@@ -794,6 +797,7 @@ export const translations = {
     nav: {
       brand: "Escale à La Cotinière",
       backHome: "← Volver al inicio",
+      about: "Quiénes somos",
       collection: "Nuestra Colección",
       cotiniere: "La Cotinière",
       contact: "Contacto",

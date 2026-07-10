@@ -55,6 +55,7 @@ export default function Header() {
           <div className="hidden items-center gap-8 text-sm font-semibold text-[#082f3a] md:flex">
             <a href="/#collection">{t("nav.collection")}</a>
             <a href="/#cotiniere">{t("nav.cotiniere")}</a>
+            <Link href="/qui-sommes-nous">{t("nav.about")}</Link>
             <a href="/#contact">{t("nav.contact")}</a>
           </div>
 
@@ -132,6 +133,13 @@ export default function Header() {
               >
                 {t("nav.cotiniere")}
               </a>
+              <Link
+                href="/qui-sommes-nous"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-2xl px-4 py-3 transition hover:bg-[#f7f1e8]"
+              >
+                {t("nav.about")}
+              </Link>
               <a
                 href="/#contact"
                 onClick={() => setMenuOpen(false)}
