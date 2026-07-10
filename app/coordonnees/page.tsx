@@ -153,11 +153,11 @@ function CoordonneesPageContent() {
               <input
                 type="checkbox"
                 id="accepte-cgl"
-                className="mt-1"
+                className="mt-1 h-5 w-5 shrink-0 accent-[#082f3a]"
                 checked={accepte}
                 onChange={(e) => setAccepte(e.target.checked)}
               />
-              <span>
+              <span className="text-[#082f3a]">
                 <label htmlFor="accepte-cgl" className="cursor-pointer">
                   {t("coord.cglPrefix")}
                 </label>{" "}
