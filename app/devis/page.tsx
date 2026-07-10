@@ -123,24 +123,24 @@ function DevisPageContent() {
             </h2>
 
             <div className="grid gap-4">
-              <label>
+              <label className="block font-semibold text-[#082f3a]">
                 {t("devis.adults")}
-                <input type="number" min="1" value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="mt-2 w-full rounded-xl border p-4" />
+                <input type="number" min="1" value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
 
-              <label>
+              <label className="block font-semibold text-[#082f3a]">
                 {t("devis.children")}
-                <input type="number" min="0" value={children} onChange={(e) => setChildren(Number(e.target.value))} className="mt-2 w-full rounded-xl border p-4" />
+                <input type="number" min="0" value={children} onChange={(e) => setChildren(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
 
-              <label>
+              <label className="block font-semibold text-[#082f3a]">
                 {t("devis.babies")}
-                <input type="number" min="0" value={babies} onChange={(e) => setBabies(Number(e.target.value))} className="mt-2 w-full rounded-xl border p-4" />
+                <input type="number" min="0" value={babies} onChange={(e) => setBabies(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
 
-              <label>
+              <label className="block font-semibold text-[#082f3a]">
                 {t("devis.pet")}
-                <select value={pet} onChange={(e) => setPet(e.target.value as "oui" | "non")} className="mt-2 w-full rounded-xl border p-4">
+                <select value={pet} onChange={(e) => setPet(e.target.value as "oui" | "non")} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]">
                   <option value="non">{t("devis.petNo")}</option>
                   <option value="oui">{t("devis.petYes")}</option>
                 </select>
