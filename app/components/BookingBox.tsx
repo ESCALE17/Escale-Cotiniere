@@ -82,12 +82,12 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
   const rulesOk = rulesCheck.ok;
 
   return (
-    <div className="rounded-3xl bg-white p-8 shadow-xl">
+    <div className="rounded-3xl bg-white p-4 shadow-xl md:p-8">
       <h2 className="mb-6 text-3xl font-bold text-[#082f3a]">
         {t("booking.checkAvailability")}
       </h2>
 
-      <div className="rounded-3xl border border-[#eadfce] bg-[#fbf7f0] p-6">
+      <div className="rounded-3xl border border-[#eadfce] bg-[#fbf7f0] p-2 md:p-6">
         <DayPicker
           mode="range"
           selected={range}
@@ -107,9 +107,9 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
             month: "space-y-4",
             caption: "flex justify-center pb-4 text-xl font-bold text-[#082f3a]",
             table: "w-full border-collapse",
-            head_cell: "w-11 text-sm font-semibold text-[#8a755d]",
-            cell: "h-11 w-11 text-center text-sm",
-            day: "h-11 w-11 rounded-full font-semibold text-[#082f3a] hover:bg-[#d8b66a]/30",
+            head_cell: "w-9 md:w-11 text-xs md:text-sm font-semibold text-[#8a755d]",
+            cell: "h-9 w-9 md:h-11 md:w-11 text-center text-xs md:text-sm",
+            day: "h-9 w-9 md:h-11 md:w-11 rounded-full font-semibold text-[#082f3a] hover:bg-[#d8b66a]/30",
             day_selected: "bg-[#082f3a] text-white hover:bg-[#082f3a]",
             day_range_start: "bg-[#082f3a] text-white",
             day_range_end: "bg-[#082f3a] text-white",
