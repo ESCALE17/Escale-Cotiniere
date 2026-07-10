@@ -158,7 +158,7 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
         <div className="mt-8 rounded-2xl bg-green-50 p-6 text-green-900">
           <p className="mb-4 font-bold">{t("booking.available")}</p>
           <Link
-            href={`/devis?villa=${villaSlug}&arrival=${arrivalParam}&departure=${departureParam}&lang=${locale}`}
+            href={`/panier?villa=${villaSlug}&arrival=${arrivalParam}&departure=${departureParam}&lang=${locale}`}
             className="inline-block rounded-full bg-[#082f3a] px-6 py-3 text-white"
           >
             {t("booking.continueToQuote")}

@@ -56,6 +56,7 @@ function CoordonneesPageContent() {
       children: booking.children,
       babies: booking.babies,
       pet: booking.pet,
+      panier: booking.panier,
       lang: booking.lang,
       ...form,
     });
@@ -64,7 +65,7 @@ function CoordonneesPageContent() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+    <main className="min-h-screen bg-[#f7f1e8] px-8 pt-40 pb-20">
       <section className="mx-auto max-w-5xl">
         <h1 className="mb-10 text-5xl font-bold text-[#082f3a]">
           {t("coord.title")}
@@ -170,6 +171,7 @@ function CoordonneesPageContent() {
                     children: booking.children,
                     babies: booking.babies,
                     pet: booking.pet,
+      panier: booking.panier,
                     lang: booking.lang,
                   })}`}
                   target="_blank"

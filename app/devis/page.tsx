@@ -9,40 +9,43 @@ import { useLanguage } from "@/app/i18n/LanguageContext";
 import { defaultSettings, type AppSettings } from "@/app/lib/clientSettings";
 import type { PricingPeriod } from "@/app/lib/periodPricing";
 export const dynamic = "force-dynamic";
-
 function DevisPageContent() {
   const searchParams = useSearchParams();
   const { t, locale } = useLanguage();
-
   const villaSlug = searchParams.get("villa") || "logis";
   const arrival = searchParams.get("arrival");
   const departure = searchParams.get("departure");
-
+  const panier = searchParams.get("panier") || "";
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [babies, setBabies] = useState(0);
   const [pet, setPet] = useState<"oui" | "non">("non");
   const [settings, setSettings] = useState<AppSettings>(defaultSettings);
   const [periods, setPeriods] = useState<PricingPeriod[]>([]);
-
-  useEffect(() => {
+  const [panierTotal, setPanierTotal] = useState(0);
+  useEffect(function () {
     fetch("/api/public-settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.settings) setSettings(data.settings);
-      })
-      .catch(() => {});
+      .then(function (res) { return res.json(); })
+      .then(function (data) { if (data.settings) setSettings(data.settings); })
+      .catch(function () {});
   }, []);
-
-  useEffect(() => {
-    fetch(`/api/public-pricing-periods?villa=${villaSlug}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.periods) setPeriods(data.periods);
-      })
-      .catch(() => {});
+  useEffect(function () {
+    fetch("/api/public-pricing-periods?villa=" + villaSlug)
+      .then(function (res) { return res.json(); })
+      .then(function (data) { if (data.periods) setPeriods(data.periods); })
+      .catch(function () {});
   }, [villaSlug]);
-
+  useEffect(function () {
+    if (!panier) { setPanierTotal(0); return; }
+    fetch("/api/panier-total", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ panier: panier }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) { setPanierTotal(Number(data.total) || 0); })
+      .catch(function () { setPanierTotal(0); });
+  }, [panier]);
   const pricing = computePricing({
     villaSlug,
     arrival,
@@ -51,45 +54,31 @@ function DevisPageContent() {
     children,
     babies,
     pet: pet === "oui",
-  }, settings, periods);
-
+  }, settings, periods, panierTotal);
   const villa = pricing.villa;
   const missingDates = !arrival || !departure;
-
   if (!villa) {
     return (
-      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+      <main className="min-h-screen bg-[#f7f1e8] px-8 pt-40 pb-20">
         <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
-          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
-            {t("devis.villaNotFound")}
-          </h1>
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">{t("devis.villaNotFound")}</h1>
           <p className="mb-8 text-slate-600">{t("devis.villaNotFoundText")}</p>
-          <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
-            {t("devis.backHome")}
-          </Link>
+          <Link href="/" className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">{t("devis.backHome")}</Link>
         </section>
       </main>
     );
   }
-
   if (missingDates) {
     return (
-      <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+      <main className="min-h-screen bg-[#f7f1e8] px-8 pt-40 pb-20">
         <section className="mx-auto max-w-3xl rounded-3xl bg-white p-10 text-center shadow-xl">
-          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">
-            {t("devis.chooseDatesFirst")}
-          </h1>
-          <p className="mb-8 text-slate-600">
-            {t("devis.chooseDatesFirstText", { villa: villa.name })}
-          </p>
-          <Link href={villa.href} className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">
-            {t("devis.seeVilla", { villa: villa.name })}
-          </Link>
+          <h1 className="mb-4 text-3xl font-bold text-[#082f3a]">{t("devis.chooseDatesFirst")}</h1>
+          <p className="mb-8 text-slate-600">{t("devis.chooseDatesFirstText", { villa: villa.name })}</p>
+          <Link href={villa.href} className="inline-block rounded-full bg-[#082f3a] px-8 py-4 text-white">{t("devis.seeVilla", { villa: villa.name })}</Link>
         </section>
       </main>
     );
   }
-
   const nextQuery = buildBookingQuery({
     villa: villaSlug,
     arrival: arrival ?? undefined,
@@ -98,55 +87,41 @@ function DevisPageContent() {
     children,
     babies,
     pet,
+    panier: panier,
     lang: locale,
   });
-
   return (
-    <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
+    <main className="min-h-screen bg-[#f7f1e8] px-8 pt-40 pb-20">
       <section className="mx-auto max-w-5xl">
         <div className="mb-8 rounded-3xl bg-green-50 p-6 text-green-900">
           <p className="font-bold">{t("devis.availableStay")}</p>
-          <p>
-            {villa.name} — {arrival} → {departure} — {pricing.nights}{" "}
-            {t("devis.nightsSuffix")}
-          </p>
+          <p>{villa.name} - {arrival} - {departure} - {pricing.nights} {t("devis.nightsSuffix")}</p>
         </div>
-
-        <h1 className="mb-8 text-5xl font-bold text-[#082f3a]">
-          {t("devis.title")}
-        </h1>
-
+        <h1 className="mb-8 text-5xl font-bold text-[#082f3a]">{t("devis.title")}</h1>
         <div className="grid gap-8 md:grid-cols-2">
           <div className="rounded-3xl bg-white p-8 shadow-xl">
-            <h2 className="mb-6 text-2xl font-bold text-[#082f3a]">
-              {t("devis.stayInfo")}
-            </h2>
-
+            <h2 className="mb-6 text-2xl font-bold text-[#082f3a]">{t("devis.stayInfo")}</h2>
             <div className="grid gap-4">
               <label className="block font-semibold text-[#082f3a]">
                 {t("devis.adults")}
-                <input type="number" min="1" value={adults} onChange={(e) => setAdults(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
+                <input type="number" min="1" value={adults} onChange={function (e) { setAdults(Number(e.target.value)); }} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
-
               <label className="block font-semibold text-[#082f3a]">
                 {t("devis.children")}
-                <input type="number" min="0" value={children} onChange={(e) => setChildren(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
+                <input type="number" min="0" value={children} onChange={function (e) { setChildren(Number(e.target.value)); }} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
-
               <label className="block font-semibold text-[#082f3a]">
                 {t("devis.babies")}
-                <input type="number" min="0" value={babies} onChange={(e) => setBabies(Number(e.target.value))} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
+                <input type="number" min="0" value={babies} onChange={function (e) { setBabies(Number(e.target.value)); }} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]" />
               </label>
-
               <label className="block font-semibold text-[#082f3a]">
                 {t("devis.pet")}
-                <select value={pet} onChange={(e) => setPet(e.target.value as "oui" | "non")} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]">
+                <select value={pet} onChange={function (e) { setPet(e.target.value as "oui" | "non"); }} className="mt-2 w-full rounded-xl border border-[#eadfce] p-4 text-[#082f3a] outline-none focus:border-[#082f3a]">
                   <option value="non">{t("devis.petNo")}</option>
                   <option value="oui">{t("devis.petYes")}</option>
                 </select>
               </label>
             </div>
-
             {pricing.capacityExceeded && (
               <div className="mt-6 rounded-2xl bg-red-50 p-5 text-red-900">
                 <p className="font-bold">{t("devis.capacityExceeded")}</p>
@@ -154,60 +129,32 @@ function DevisPageContent() {
               </div>
             )}
           </div>
-
           <div className="rounded-3xl bg-white p-8 shadow-xl">
-            <h2 className="mb-6 text-2xl font-bold text-[#082f3a]">
-              {t("devis.summary")}
-            </h2>
-
+            <h2 className="mb-6 text-2xl font-bold text-[#082f3a]">{t("devis.summary")}</h2>
             {pricing.needsQuote ? (
               <div className="rounded-2xl bg-amber-50 p-6 text-amber-900">
                 <p className="mb-2 font-bold">{t("devis.quoteTitle")}</p>
                 <p className="mb-4">{t("devis.quoteText")}</p>
-                <a href="mailto:contact@escalealacotiniere.fr" className="font-semibold underline">
-                  contact@escalealacotiniere.fr
-                </a>
+                <a href="mailto:contact@escalealacotiniere.fr" className="font-semibold underline">contact@escalealacotiniere.fr</a>
               </div>
             ) : (
               <div className="space-y-4 text-slate-700">
-                <p>{t("devis.stay")} : {pricing.stayPrice.toFixed(2)} €</p>
-                {pricing.weeklyDiscount > 0 && (
-                  <p className="text-green-700">
-                    Remise semaine incluse : −{pricing.weeklyDiscount.toFixed(2)} €
-                  </p>
-                )}
-                <p>{t("devis.cleaning")} : {pricing.cleaningFee.toFixed(2)} €</p>
-                <p>{t("devis.linen")} : {pricing.linenFee.toFixed(2)} €</p>
-                <p>{t("devis.animal")} : {pricing.petFee.toFixed(2)} €</p>
-
+                <p>{t("devis.stay")} : {pricing.stayPrice.toFixed(2)} EUR</p>
+                {pricing.weeklyDiscount > 0 && (<p className="text-green-700">Remise semaine incluse : -{pricing.weeklyDiscount.toFixed(2)} EUR</p>)}
+                <p>{t("devis.cleaning")} : {pricing.cleaningFee.toFixed(2)} EUR</p>
+                <p>{t("devis.linen")} : {pricing.linenFee.toFixed(2)} EUR</p>
+                <p>{t("devis.animal")} : {pricing.petFee.toFixed(2)} EUR</p>
                 <hr />
-
-                <p className="text-2xl font-bold text-[#082f3a]">
-                  {t("devis.total")} : {pricing.capacityExceeded ? "—" : `${pricing.total.toFixed(2)} €`}
-                </p>
-                <p className="font-semibold">
-                  {t("devis.deposit")} : {pricing.capacityExceeded ? "—" : `${pricing.deposit.toFixed(2)} €`}
-                </p>
-                <p className="font-semibold">
-                  {t("devis.balance")} : {pricing.capacityExceeded ? "—" : `${pricing.balance.toFixed(2)} €`}
-                </p>
-
-                {!pricing.capacityExceeded && (
-                  <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
-                    {t("devis.touristTaxNote", { amount: pricing.touristTax.toFixed(2) })}
-                  </p>
-                )}
+                <p className="text-2xl font-bold text-[#082f3a]">{t("devis.total")} : {pricing.capacityExceeded ? "-" : pricing.total.toFixed(2) + " EUR"}</p>
+                <p className="font-semibold">{t("devis.deposit")} : {pricing.capacityExceeded ? "-" : pricing.deposit.toFixed(2) + " EUR"}</p>
+                <p className="font-semibold">{t("devis.balance")} : {pricing.capacityExceeded ? "-" : pricing.balance.toFixed(2) + " EUR"}</p>
+                {!pricing.capacityExceeded && (<p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{t("devis.touristTaxNote", { amount: pricing.touristTax.toFixed(2) })}</p>)}
               </div>
             )}
-
             {!pricing.capacityExceeded && !pricing.needsQuote ? (
-              <Link href={`/coordonnees?${nextQuery}`} className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white">
-                {t("devis.continue")}
-              </Link>
+              <Link href={"/coordonnees?" + nextQuery} className="mt-8 block w-full rounded-full bg-[#082f3a] px-8 py-4 text-center text-white">{t("devis.continue")}</Link>
             ) : (
-              <button disabled className="mt-8 w-full rounded-full bg-[#082f3a] px-8 py-4 text-white opacity-40">
-                {t("devis.continue")}
-              </button>
+              <button disabled className="mt-8 w-full rounded-full bg-[#082f3a] px-8 py-4 text-white opacity-40">{t("devis.continue")}</button>
             )}
           </div>
         </div>
