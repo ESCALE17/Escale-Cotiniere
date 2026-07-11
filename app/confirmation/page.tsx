@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { computePricing } from "@/app/lib/pricing";
+import { computePanierTotal, computePanierLignes } from "@/app/lib/panier";
 import { sendBookingConfirmationEmail, sendOwnerNotificationEmail } from "@/app/lib/email";
 import { saveReservation } from "@/app/lib/reservations";
 import { getSettings } from "@/app/lib/getSettings";
@@ -56,6 +57,8 @@ export default async function ConfirmationPage({
   const children = Number(getParam(params, "children") || 0);
   const babies = Number(getParam(params, "babies") || 0);
   const pet = getParam(params, "pet");
+  const panier = getParam(params, "panier");
+  const panierLignes = await computePanierLignes(panier);
   const nom = getParam(params, "nom");
   const prenom = getParam(params, "prenom");
   const email = getParam(params, "email");
@@ -92,7 +95,8 @@ export default async function ConfirmationPage({
       pet: pet === "oui",
     },
     appSettings,
-    periods
+    periods,
+    await computePanierTotal(panier)
   );
 
   const amountPaid = (session.amount_total ?? 0) / 100;
@@ -168,6 +172,7 @@ export default async function ConfirmationPage({
       balance: pricing.balance,
       amountPaid: amountPaid,
       locale: lang,
+      panierItems: panierLignes,
     });
 
     emailSent = emailResult.sent;
@@ -195,6 +200,7 @@ export default async function ConfirmationPage({
       balance: pricing.balance,
       amountPaid: amountPaid,
       locale: lang,
+      panierItems: panierLignes,
     });
 
     if (emailSent) {
@@ -222,6 +228,7 @@ export default async function ConfirmationPage({
       emailSent={emailSent}
       email={email}
       contractUrl={contractUrl}
+      panierItems={panierLignes}
     />
   );
 }

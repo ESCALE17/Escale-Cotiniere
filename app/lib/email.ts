@@ -1,9 +1,8 @@
 import { Resend } from "resend";
 import { generateContractPdfBuffer } from "@/app/lib/contract";
-
 const FROM_ADDRESS = "Escale à La Cotinière <contact@escalealacotiniere.fr>";
 const OWNER_NOTIFICATION_ADDRESS = "contact@escalealacotiniere.fr";
-
+export type PanierLigne = { nom: string; quantite: number };
 export type BookingConfirmationEmailParams = {
   villaName: string;
   villaSlug: string;
@@ -28,8 +27,8 @@ export type BookingConfirmationEmailParams = {
   balance: number;
   amountPaid: number;
   locale?: "fr" | "en" | "de" | "es";
+  panierItems?: PanierLigne[];
 };
-
 const emailLabels = {
   fr: {
     subject: "Confirmation de votre réservation",
@@ -49,6 +48,7 @@ const emailLabels = {
     attachment: "Vous trouverez votre contrat de location en pièce jointe de ce mail.",
     signOff: "À très bientôt à La Cotinière !",
     nightsSuffix: (n: number) => (n > 1 ? "nuits" : "nuit"),
+    panierTitre: "Votre panier d'accueil vous attend à votre arrivée :",
   },
   en: {
     subject: "Confirmation of your booking",
@@ -68,13 +68,14 @@ const emailLabels = {
     attachment: "You will find your rental contract attached to this email.",
     signOff: "See you soon at La Cotinière!",
     nightsSuffix: (n: number) => (n > 1 ? "nights" : "night"),
+    panierTitre: "Your welcome basket will be waiting for you on arrival:",
   },
   de: {
     subject: "Bestätigung Ihrer Reservierung",
     title: "Ihre Reservierung ist bestätigt",
     greeting: "Hallo",
     intro: (villa: string) =>
-      `Vielen Dank, wir haben Ihre Anzahlung für Ihren Aufenthalt in „${villa}“ erhalten. Hier die Zusammenfassung Ihrer Reservierung:`,
+      `Vielen Dank, wir haben Ihre Anzahlung für Ihren Aufenthalt in „${villa}" erhalten. Hier die Zusammenfassung Ihrer Reservierung:`,
     stay: "Aufenthalt",
     travelers: "Gäste",
     travelersValue: (a: number, c: number, b: number) =>
@@ -87,6 +88,7 @@ const emailLabels = {
     attachment: "Ihren Mietvertrag finden Sie im Anhang dieser E-Mail.",
     signOff: "Bis bald in La Cotinière!",
     nightsSuffix: () => "Nacht/Nächte",
+    panierTitre: "Ihr Willkommenskorb erwartet Sie bei Ihrer Ankunft:",
   },
   es: {
     subject: "Confirmación de su reserva",
@@ -106,9 +108,9 @@ const emailLabels = {
     attachment: "Encontrará su contrato de alquiler adjunto a este correo.",
     signOff: "¡Hasta pronto en La Cotinière!",
     nightsSuffix: (n: number) => (n > 1 ? "noches" : "noche"),
+    panierTitre: "Su cesta de bienvenida le espera a su llegada:",
   },
 };
-
 /**
  * Envoie le mail de confirmation de réservation au client (avec le contrat
  * en pièce jointe) et une copie de notification au propriétaire.
@@ -116,39 +118,45 @@ const emailLabels = {
  */
 export async function sendBookingConfirmationEmail(
   params: BookingConfirmationEmailParams
-) {
+): Promise<{ sent: boolean; reason?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
-
   if (!apiKey) {
-    console.error(
-      "RESEND_API_KEY manquant : impossible d'envoyer le mail de confirmation."
-    );
-    return { sent: false, reason: "missing_api_key" as const };
+    console.error("RESEND_API_KEY manquante pour le mail de confirmation.");
+    return { sent: false, reason: "no_api_key" };
   }
-
   const resend = new Resend(apiKey);
-  const locale = params.locale ?? "fr";
-  const M = emailLabels[locale];
-
+  const M = emailLabels[params.locale ?? "fr"] ?? emailLabels.fr;
   const contractBuffer = await generateContractPdfBuffer({
     villaSlug: params.villaSlug,
+    villaName: params.villaName,
     clientName: params.clientName,
-    clientAddress: params.clientAddress,
-    clientPhone: params.clientPhone,
+    clientAddress: params.clientAddress ?? "",
+    clientPhone: params.clientPhone ?? "",
     arrival: params.arrival,
     departure: params.departure,
+    nights: params.nights,
+    pricePerNight: params.pricePerNight ?? 0,
+    stayPrice: params.stayPrice ?? 0,
+    cleaningFee: params.cleaningFee ?? 0,
+    linenFee: params.linenFee ?? 0,
+    petFee: params.petFee ?? 0,
+    touristTax: params.touristTax ?? 0,
     total: params.total,
     deposit: params.deposit,
-    nights: params.nights,
-    pricePerNight: params.pricePerNight,
-    stayPrice: params.stayPrice,
-    cleaningFee: params.cleaningFee,
-    linenFee: params.linenFee,
-    petFee: params.petFee,
-    touristTax: params.touristTax,
-    locale: params.locale,
+    balance: params.balance,
+    locale: params.locale ?? "fr",
   });
-
+  const panierItems = params.panierItems ?? [];
+  const panierHtml =
+    panierItems.length > 0
+      ? `
+      <div style="border: 1px solid #e0d6c4; background: #faf6ee; border-radius: 12px; padding: 16px 20px; margin: 20px 0;">
+        <p style="margin: 0 0 8px; font-weight: bold;">🧺 ${M.panierTitre}</p>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${panierItems.map((i) => `<li>${i.quantite} × ${i.nom}</li>`).join("")}
+        </ul>
+      </div>`
+      : "";
   const html = `
     <div style="font-family: Arial, Helvetica, sans-serif; color: #082f3a; max-width: 600px; margin: 0 auto;">
       <img
@@ -185,11 +193,11 @@ export async function sendBookingConfirmationEmail(
       <p style="font-size: 14px;">
         ${M.touristTax((params.touristTax ?? 0).toFixed(2))}
       </p>
+      ${panierHtml}
       <p>${M.attachment}</p>
       <p>${M.signOff}</p>
     </div>
   `;
-
   try {
     await resend.emails.send({
       from: FROM_ADDRESS,
@@ -229,6 +237,12 @@ export async function sendOwnerNotificationEmail(
 
   const petText = params.petFee && params.petFee > 0 ? "oui" : "non";
 
+  const panierItems = params.panierItems ?? [];
+  const panierHtmlOwner =
+    panierItems.length > 0
+      ? `<tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Panier d'accueil</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${panierItems.map((i) => `${i.quantite} × ${i.nom}`).join(", ")}</td></tr>`
+      : "";
+
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #082f3a;">
       <h2 style="color: #082f3a;">🔔 Nouvelle réservation</h2>
@@ -242,6 +256,7 @@ export async function sendOwnerNotificationEmail(
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Email</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientEmail}</td></tr>
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Téléphone</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientPhone ?? "—"}</td></tr>
         <tr><td style="padding: 8px; border-bottom: 1px solid #eadfce;"><strong>Adresse</strong></td><td style="padding: 8px; border-bottom: 1px solid #eadfce;">${params.clientAddress ?? "—"}</td></tr>
+        ${panierHtmlOwner}
         <tr><td style="padding: 8px;"><strong>Total séjour</strong></td><td style="padding: 8px; text-align: right;">${params.total.toFixed(2)} €</td></tr>
         <tr><td style="padding: 8px;"><strong>Acompte payé</strong></td><td style="padding: 8px; text-align: right; color: #15803d;">${params.amountPaid.toFixed(2)} €</td></tr>
         <tr><td style="padding: 8px;"><strong>Solde restant</strong></td><td style="padding: 8px; text-align: right;">${params.balance.toFixed(2)} €</td></tr>
@@ -316,249 +331,6 @@ export async function sendBalanceRequestEmail(params: {
     return { sent: true };
   } catch (error) {
     console.error("Échec de l'envoi de la demande de solde :", error);
-    return { sent: false, reason: "send_error" };
-  }
-}
-
-/**
- * Alerte le propriétaire quand un client a réglé son solde.
- * Appelé depuis /api/verifier-solde une fois le paiement confirmé.
- */
-export async function sendBalancePaidOwnerEmail(params: {
-  clientName: string;
-  villaName: string;
-  arrival: string;
-  departure: string;
-  balance: number;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY manquante pour l'alerte solde réglé.");
-    return { sent: false, reason: "no_api_key" };
-  }
-  const resend = new Resend(apiKey);
-  const { clientName, villaName, arrival, departure, balance } = params;
-  const fmt = (d: string) => {
-    const [y, m, j] = d.split("-");
-    return `${j}/${m}/${y}`;
-  };
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#082f3a">
-      <h2>✅ Solde réglé</h2>
-      <p><strong>${clientName}</strong> vient de régler son solde.</p>
-      <ul>
-        <li>Villa : <strong>${villaName}</strong></li>
-        <li>Séjour : du ${fmt(arrival)} au ${fmt(departure)}</li>
-        <li>Montant réglé : <strong>${balance.toFixed(2)} €</strong></li>
-      </ul>
-    </div>`;
-  try {
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: OWNER_NOTIFICATION_ADDRESS,
-      subject: `✅ Solde réglé – ${clientName} (${villaName})`,
-      html,
-    });
-    return { sent: true };
-  } catch (error) {
-    console.error("Échec de l'envoi de l'alerte solde réglé :", error);
-    return { sent: false, reason: "send_error" };
-  }
-}
-
-// ============ CAUTION ============
-
-/**
- * Envoie au client le lien de paiement de sa caution (avec copie au
- * proprietaire en bcc). Appele depuis /api/checkout-caution.
- */
-export async function sendCautionRequestEmail(params: {
-  clientName: string;
-  clientEmail: string;
-  villaName: string;
-  arrival: string;
-  departure: string;
-  caution: number;
-  paymentUrl: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY manquante pour la demande de caution.");
-    return { sent: false, reason: "no_api_key" };
-  }
-  const resend = new Resend(apiKey);
-  const { clientName, clientEmail, villaName, arrival, departure, caution, paymentUrl } = params;
-  const fmt = (d: string) => {
-    const [y, m, j] = d.split("-");
-    return `${j}/${m}/${y}`;
-  };
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
-      <h2 style="color:#082f3a">Caution de votre sejour</h2>
-      <p>Bonjour ${clientName},</p>
-      <p>Dans le cadre de votre sejour a <strong>${villaName}</strong> (du ${fmt(arrival)} au ${fmt(departure)}), nous vous demandons le versement d'une caution de <strong>${caution.toFixed(2)} €</strong>.</p>
-      <p>Cette caution vous sera <strong>integralement restituee apres votre depart</strong>, sous reserve de l'etat des lieux de sortie.</p>
-      <p style="text-align:center;margin:32px 0">
-        <a href="${paymentUrl}" style="background:#082f3a;color:#fff;padding:14px 28px;border-radius:9999px;text-decoration:none;font-weight:bold">Verser ma caution en ligne</a>
-      </p>
-      <p style="font-size:13px;color:#8a755d">Paiement securise par carte bancaire via Stripe. Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>${paymentUrl}</p>
-      <p>A tres bientot,<br>Escale a La Cotiniere</p>
-    </div>`;
-  try {
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: clientEmail,
-      bcc: OWNER_NOTIFICATION_ADDRESS,
-      subject: `Caution - ${villaName}`,
-      html,
-    });
-    return { sent: true };
-  } catch (error) {
-    console.error("Echec de l'envoi de la demande de caution :", error);
-    return { sent: false, reason: "send_error" };
-  }
-}
-
-/**
- * Alerte le proprietaire quand un client a verse sa caution.
- * Appele depuis /api/verifier-caution une fois le paiement confirme.
- */
-export async function sendCautionPaidOwnerEmail(params: {
-  clientName: string;
-  villaName: string;
-  arrival: string;
-  departure: string;
-  caution: number;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY manquante pour l'alerte caution versee.");
-    return { sent: false, reason: "no_api_key" };
-  }
-  const resend = new Resend(apiKey);
-  const { clientName, villaName, arrival, departure, caution } = params;
-  const fmt = (d: string) => {
-    const [y, m, j] = d.split("-");
-    return `${j}/${m}/${y}`;
-  };
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#082f3a">
-      <h2>Caution versee</h2>
-      <p><strong>${clientName}</strong> vient de verser sa caution.</p>
-      <ul>
-        <li>Villa : <strong>${villaName}</strong></li>
-        <li>Sejour : du ${fmt(arrival)} au ${fmt(departure)}</li>
-        <li>Montant : <strong>${caution.toFixed(2)} €</strong></li>
-      </ul>
-      <p style="font-size:13px;color:#8a755d">Pensez a la restituer (totalement ou partiellement) apres le depart, depuis votre espace d'administration.</p>
-    </div>`;
-  try {
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: OWNER_NOTIFICATION_ADDRESS,
-      subject: `Caution versee - ${clientName} (${villaName})`,
-      html,
-    });
-    return { sent: true };
-  } catch (error) {
-    console.error("Echec de l'envoi de l'alerte caution versee :", error);
-    return { sent: false, reason: "send_error" };
-  }
-}
-
-// ============ EMAILS DE REMBOURSEMENT ============
-
-/**
- * Previent le client qu'un remboursement de sa caution a ete effectue.
- * Si le remboursement est partiel, on inclut le motif saisi par le proprietaire.
- */
-export async function sendCautionRefundEmail(params: {
-  clientName: string;
-  clientEmail: string;
-  villaName: string;
-  cautionAmount: number;
-  refundedAmount: number;
-  reason?: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY manquante pour le remboursement de caution.");
-    return { sent: false, reason: "no_api_key" };
-  }
-  const resend = new Resend(apiKey);
-  const { clientName, clientEmail, villaName, cautionAmount, refundedAmount, reason } = params;
-  const isPartial = refundedAmount < cautionAmount - 0.001;
-
-  const partialBlock = isPartial
-    ? `
-      <p>Le montant restitue est de <strong>${refundedAmount.toFixed(2)} €</strong> sur une caution de ${cautionAmount.toFixed(2)} €.</p>
-      ${reason ? `<p style="background:#f7f1e8;padding:12px 16px;border-radius:12px"><strong>Motif de la retenue :</strong><br>${reason}</p>` : ""}
-    `
-    : `<p>Votre caution de <strong>${refundedAmount.toFixed(2)} €</strong> vous a ete <strong>integralement restituee</strong>.</p>`;
-
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
-      <h2 style="color:#082f3a">Restitution de votre caution</h2>
-      <p>Bonjour ${clientName},</p>
-      <p>Suite a votre sejour a <strong>${villaName}</strong>, nous avons procede au remboursement de votre caution.</p>
-      ${partialBlock}
-      <p style="font-size:13px;color:#8a755d">Le remboursement apparaitra sur votre compte sous quelques jours (delai bancaire).</p>
-      <p>Merci de votre sejour et a bientot,<br>Escale a La Cotiniere</p>
-    </div>`;
-  try {
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: clientEmail,
-      bcc: OWNER_NOTIFICATION_ADDRESS,
-      subject: `Restitution de votre caution - ${villaName}`,
-      html,
-    });
-    return { sent: true };
-  } catch (error) {
-    console.error("Echec de l'envoi du remboursement de caution :", error);
-    return { sent: false, reason: "send_error" };
-  }
-}
-
-/**
- * Previent le client qu'un remboursement (loyer/acompte) a ete effectue,
- * avec le motif saisi par le proprietaire.
- */
-export async function sendPaymentRefundEmail(params: {
-  clientName: string;
-  clientEmail: string;
-  villaName: string;
-  refundedAmount: number;
-  reason?: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY manquante pour le remboursement.");
-    return { sent: false, reason: "no_api_key" };
-  }
-  const resend = new Resend(apiKey);
-  const { clientName, clientEmail, villaName, refundedAmount, reason } = params;
-
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#082f3a;max-width:560px;margin:auto">
-      <h2 style="color:#082f3a">Remboursement effectue</h2>
-      <p>Bonjour ${clientName},</p>
-      <p>Nous avons procede a un remboursement de <strong>${refundedAmount.toFixed(2)} €</strong> concernant votre reservation a <strong>${villaName}</strong>.</p>
-      ${reason ? `<p style="background:#f7f1e8;padding:12px 16px;border-radius:12px"><strong>Motif :</strong><br>${reason}</p>` : ""}
-      <p style="font-size:13px;color:#8a755d">Le remboursement apparaitra sur votre compte sous quelques jours (delai bancaire).</p>
-      <p>Cordialement,<br>Escale a La Cotiniere</p>
-    </div>`;
-  try {
-    await resend.emails.send({
-      from: FROM_ADDRESS,
-      to: clientEmail,
-      bcc: OWNER_NOTIFICATION_ADDRESS,
-      subject: `Remboursement - ${villaName}`,
-      html,
-    });
-    return { sent: true };
-  } catch (error) {
-    console.error("Echec de l'envoi du remboursement :", error);
     return { sent: false, reason: "send_error" };
   }
 }

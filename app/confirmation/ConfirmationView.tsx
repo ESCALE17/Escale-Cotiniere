@@ -1,7 +1,8 @@
 "use client";
-
 import Link from "next/link";
 import { useLanguage } from "@/app/i18n/LanguageContext";
+
+type PanierItem = { nom: string; quantite: number };
 
 type ConfirmationViewProps =
   | { state: "no-session" }
@@ -19,11 +20,19 @@ type ConfirmationViewProps =
       emailSent: boolean;
       email: string;
       contractUrl: string;
+      panierItems?: PanierItem[];
     };
 
-export default function ConfirmationView(props: ConfirmationViewProps) {
-  const { t } = useLanguage();
+const PANIER_TXT: Record<string, { titre: string }> = {
+  fr: { titre: "Votre panier d'accueil vous attend à votre arrivée :" },
+  en: { titre: "Your welcome basket will be waiting for you on arrival:" },
+  de: { titre: "Ihr Willkommenskorb erwartet Sie bei Ihrer Ankunft:" },
+  es: { titre: "Su cesta de bienvenida le espera a su llegada:" },
+};
 
+export default function ConfirmationView(props: ConfirmationViewProps) {
+  const { t, locale } = useLanguage();
+  const loc = (["fr", "en", "de", "es"].indexOf(locale as string) >= 0 ? (locale as string) : "fr");
   if (props.state === "no-session") {
     return (
       <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
@@ -44,7 +53,6 @@ export default function ConfirmationView(props: ConfirmationViewProps) {
       </main>
     );
   }
-
   if (props.state === "not-paid") {
     return (
       <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
@@ -71,14 +79,14 @@ export default function ConfirmationView(props: ConfirmationViewProps) {
       </main>
     );
   }
-
+  const panierItems = props.panierItems ?? [];
+  const panierTxt = PANIER_TXT[loc] ?? PANIER_TXT.fr;
   return (
     <main className="min-h-screen bg-[#f7f1e8] px-8 py-20">
       <section className="mx-auto max-w-4xl rounded-3xl bg-white p-10 shadow-xl">
         <h1 className="mb-6 text-5xl font-bold text-[#082f3a]">
           {t("confirmation.paidTitle")}
         </h1>
-
         <p className="mb-8 text-lg text-slate-700">
           {t("confirmation.thanksText", {
             name: props.prenom || "",
@@ -86,7 +94,6 @@ export default function ConfirmationView(props: ConfirmationViewProps) {
             villa: props.villaName,
           })}
         </p>
-
         <div className="mb-8 space-y-3 rounded-2xl bg-[#f7f1e8] p-6 text-slate-700">
           <p>
             <strong>{t("confirmation.stay")} :</strong> {props.arrival} →{" "}
@@ -106,7 +113,18 @@ export default function ConfirmationView(props: ConfirmationViewProps) {
             })}
           </p>
         </div>
-
+        {panierItems.length > 0 && (
+          <div className="mb-8 rounded-2xl border border-[#e0d6c4] bg-[#faf6ee] p-6">
+            <p className="mb-3 font-semibold text-[#082f3a]">🧺 {panierTxt.titre}</p>
+            <ul className="list-disc space-y-1 pl-6 text-slate-700">
+              {panierItems.map((item, i) => (
+                <li key={i}>
+                  {item.quantite} × {item.nom}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {props.emailSent ? (
           <p className="mb-6 rounded-2xl bg-green-50 p-4 text-sm text-green-900">
             {t("confirmation.emailSent", { email: props.email })}
@@ -116,7 +134,6 @@ export default function ConfirmationView(props: ConfirmationViewProps) {
             {t("confirmation.emailFailed")}
           </p>
         )}
-
         <a
           href={props.contractUrl}
           target="_blank"
