@@ -125,6 +125,9 @@ export default function AdminCalendrierPage() {
             <a href="/admin/tarifs" className="rounded-full border border-[#082f3a] px-5 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white">
               Tarifs
             </a>
+            <a href="/admin/coup-de-coeur" className="rounded-full border border-[#082f3a] px-5 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white">
+              Coups de coeur
+            </a>
             <button type="button" onClick={handleLogout} className="rounded-full border border-[#082f3a] px-5 py-2 text-sm font-semibold text-[#082f3a] transition hover:bg-[#082f3a] hover:text-white">
               Se déconnecter
             </button>
