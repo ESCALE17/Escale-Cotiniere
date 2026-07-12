@@ -3,7 +3,7 @@ import { supabaseAdmin } from "@/app/lib/supabaseAdmin";
 import { isAuthenticated } from "@/app/lib/requireAuth";
 
 // Catégories autorisées pour une entrée "coup de cœur".
-const CATEGORIES = ["restaurant", "velo", "ile_aix", "producteur"];
+const CATEGORIES = ["restaurant", "velo", "visite", "producteur"];
 
 const COLUMNS =
   "id, categorie, nom, description, avis, lien, code_promo, photo_url, ordre, actif, created_at";

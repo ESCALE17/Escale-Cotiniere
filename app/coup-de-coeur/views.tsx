@@ -15,7 +15,7 @@ function Shell({ title, intro, children }: { title: string; intro?: string; chil
   const t = useT();
   return (
     <main className="min-h-screen bg-[#f7f1e8]">
-      <div className="mx-auto max-w-5xl px-6 py-16 md:py-24">
+      <div className="mx-auto max-w-5xl px-6 pb-16 pt-32 md:pb-24 md:pt-40">
         <Link
           href="/coup-de-coeur"
           className="mb-8 inline-flex items-center gap-1 text-sm font-semibold text-[#082f3a] transition hover:opacity-70"
