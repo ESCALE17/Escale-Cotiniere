@@ -46,8 +46,7 @@ export async function POST(request: Request) {
       .toBuffer();
     extension = "webp";
     contentType = "image/webp";
-  } catch (err) {
-    console.error("SHARP ERROR:", err);
+  } catch {
     // sharp indisponible : on garde l'image d'origine.
     const guessed = file.name.split(".").pop()?.toLowerCase();
     if (guessed) extension = guessed;
