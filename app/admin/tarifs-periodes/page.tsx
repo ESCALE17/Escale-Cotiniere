@@ -242,6 +242,13 @@ export default function AdminTarifsPeriodesPage() {
               Lien iCal Abritel / VRBO
               <input type="url" value={icalAbritel} onChange={(e) => setIcalAbritel(e.target.value)} placeholder="http://www.abritel.fr/icalendar/..." className="mt-1 w-full rounded-xl border border-[#eadfce] px-4 py-2 text-[#082f3a] outline-none focus:border-[#082f3a]" />
             </label>
+            <div className="mt-2 rounded-xl bg-[#f7f1e8] px-4 py-3">
+              <p className="text-sm font-semibold text-[#082f3a]">Votre lien iCal (à donner aux autres plateformes)</p>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="flex-1 overflow-x-auto whitespace-nowrap rounded-lg bg-white px-3 py-2 text-xs text-[#082f3a]">{`https://www.escalealacotiniere.fr/api/export-ical?villa=${villaSlug}`}</code>
+                <button type="button" onClick={() => navigator.clipboard.writeText(`https://www.escalealacotiniere.fr/api/export-ical?villa=${villaSlug}`)} className="shrink-0 rounded-full bg-[#082f3a] px-4 py-2 text-xs font-semibold text-white transition hover:bg-[#0d4757]">Copier</button>
+              </div>
+            </div>
           </div>
           <button type="button" onClick={saveIcal} disabled={icalSaving} className="mt-4 rounded-full bg-[#082f3a] px-8 py-3 font-semibold text-white transition hover:bg-[#0d4757] disabled:opacity-40">
             {icalSaving ? "…" : "Enregistrer les liens iCal"}
