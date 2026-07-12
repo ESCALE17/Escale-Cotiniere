@@ -220,7 +220,7 @@ export const translations = {
     nav: {
       brand: "Escale à La Cotinière",
       backHome: "← Retour à l'accueil",
-      about: "Qui sommes-nous",
+      about: "Qui sommes-nous ?",
       recos: "Coups de cœur / Recommandations",
       collection: "Notre Collection",
       cotiniere: "La Cotinière",
@@ -228,7 +228,7 @@ export const translations = {
     },
     hero: {
       kicker: "Île d'Oléron · La Cotinière",
-      title: "Des demeures d'exception pour des séjours inoubliables.",
+      title: "Des demeures d'exception pour des séjours inoubliables",
       subtitle:
         "Découvrez notre collection de maisons de caractère à La Cotinière.",
     },
