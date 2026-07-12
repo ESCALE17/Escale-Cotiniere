@@ -40,6 +40,8 @@ export function expandBlockedDates(blocked: BlockedPeriod[]): Date[] {
   blocked.forEach((period) => {
     const start = new Date(period.start_date + "T00:00:00");
     const end = new Date(period.end_date + "T00:00:00");
+    // On grise chaque nuit occupee : du jour d'arrivee (inclus)
+    // jusqu'a la veille du depart. Le jour de depart reste blanc.
     for (
       let d = new Date(start);
       d < end;

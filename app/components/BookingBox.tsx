@@ -92,12 +92,19 @@ export default function BookingBox({ villaSlug }: { villaSlug: string }) {
           mode="range"
           selected={range}
           onSelect={(value) => {
+            if (value?.from && value?.to) {
+              const a = toDateString(value.from);
+              const d = toDateString(value.to);
+              if (rangeOverlapsBlocked(a, d, blocked)) {
+                return;
+              }
+            }
             setRange(value);
             setChecked(false);
           }}
           locale={calendarLocales[locale]}
           numberOfMonths={2}
-          disabled={[{ before: new Date() }, ...blockedDates]}
+          disabled={[{ before: new Date() }]}
           modifiers={{ booked: blockedDates }}
           modifiersClassNames={{
             booked: "bg-red-100 text-red-400 line-through",
