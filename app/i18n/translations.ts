@@ -230,7 +230,7 @@ export const translations = {
       kicker: "Île d'Oléron · La Cotinière",
       title: "Des demeures d'exception pour des séjours inoubliables",
       subtitle:
-        "Découvrez notre collection de maisons de caractère à La Cotinière.",
+        "Découvrez notre collection de maisons de caractère avec piscine chauffée. Réservation en direct avec le propriétaire.",
     },
     collection: {
       kicker: "Notre Collection",
@@ -423,7 +423,7 @@ export const translations = {
       kicker: "Île d'Oléron · La Cotinière",
       title: "Exceptional homes for unforgettable stays.",
       subtitle:
-        "Discover our collection of characterful houses in La Cotinière.",
+        "Discover our collection of characterful homes with heated pool. Book directly with the owner.",
     },
     collection: {
       kicker: "Our Collection",
@@ -616,7 +616,7 @@ export const translations = {
       kicker: "Île d'Oléron · La Cotinière",
       title: "Außergewöhnliche Häuser für unvergessliche Aufenthalte.",
       subtitle:
-        "Entdecken Sie unsere Kollektion charaktervoller Häuser in La Cotinière.",
+        "Entdecken Sie unsere Auswahl an charaktervollen Häusern mit beheiztem Pool. Direkt beim Eigentümer buchen.",
     },
     collection: {
       kicker: "Unsere Kollektion",
@@ -810,7 +810,7 @@ export const translations = {
       kicker: "Isla de Oléron · La Cotinière",
       title: "Casas excepcionales para estancias inolvidables.",
       subtitle:
-        "Descubra nuestra colección de casas con encanto en La Cotinière.",
+        "Descubra nuestra colección de casas con encanto y piscina climatizada. Reserve directamente con el propietario.",
     },
     collection: {
       kicker: "Nuestra Colección",
